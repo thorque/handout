@@ -313,5 +313,14 @@ The `Popover` carries the design's obligations in full: `aria-haspopup="dialog"`
 `aria-expanded` on the trigger, `role="dialog"` on a panel that exists only while open,
 focus moving into it, measured placement (below, above when there is no room, never over
 the trigger), and three close paths — the "Schließen" button, `Escape` and a click beside
-it — **all** returning focus to the trigger. The tab cycle inside the panel is ours: the
-design is silent on `Tab`, and it follows from `role="dialog"`.
+it.
+
+**What the focus does when it closes**, because it is the part that is easy to get wrong in
+both directions: "Schließen" and `Escape` always put it back on the trigger. A click beside
+the popover does the same **when it landed on nothing focusable** — otherwise the focus
+would fall onto `<body>`, and that loss is what the design guards against. A click that
+landed on another control leaves the focus there: taking it back would mean a field the
+user just clicked cannot be typed into.
+
+The tab cycle inside the panel is ours: the design is silent on `Tab`, and it follows from
+`role="dialog"`.

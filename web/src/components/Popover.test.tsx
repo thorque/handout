@@ -10,7 +10,9 @@ function renderPopover() {
       <Popover triggerLabel="Geschützt — Schutz verwalten" heading="Prototyp Kundenportal">
         <Button>Neues Passwort erzeugen</Button>
       </Popover>
-      <button type="button">daneben</button>
+      <p>freie Fläche</p>
+      <label htmlFor="name">Name</label>
+      <input id="name" />
     </div>,
   );
 }
@@ -61,15 +63,34 @@ describe('Popover', () => {
     expect(document.activeElement).toBe(trigger());
   });
 
-  it('closes on a click beside it, focus returning the same way', async () => {
+  it('closes on a click into empty space and takes the focus back there', async () => {
+    // Nothing focusable was clicked, so the focus would land on <body> — which is the
+    // loss the design guards against.
     renderPopover();
     const user = userEvent.setup();
     await user.click(trigger());
 
-    await user.click(screen.getByRole('button', { name: 'daneben' }));
+    await user.click(screen.getByText('freie Fläche'));
 
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(document.activeElement).toBe(trigger());
+  });
+
+  it('closes on a click into another control and leaves the focus there', async () => {
+    // The regression this replaces: the popover claimed the focus back a microtask later,
+    // so a field clicked beside it lost the caret again and could not be typed into.
+    renderPopover();
+    const user = userEvent.setup();
+    await user.click(trigger());
+
+    const field = screen.getByLabelText('Name');
+    await user.click(field);
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(document.activeElement).toBe(field);
+
+    await user.keyboard('Prototyp');
+    expect((field as HTMLInputElement).value).toBe('Prototyp');
   });
 
   it('cycles Tab inside the panel instead of leaking behind it', async () => {

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import styles from './Wordmark.module.css';
 
 export interface WordmarkProps {
@@ -12,15 +13,14 @@ export interface WordmarkProps {
  * that reference a logo by URL.
  */
 export function Wordmark({ markOnly = false }: WordmarkProps) {
+  // The header and the sample page put several lockups into one document, so the title's
+  // id cannot be a constant: duplicate ids would point every aria-labelledby at the first.
+  const titleId = useId();
+
   return (
     <span className={styles.lockup}>
-      <svg
-        className={styles.mark}
-        viewBox="0 0 29 29"
-        role="img"
-        aria-labelledby="handout-wordmark-title"
-      >
-        <title id="handout-wordmark-title">handout</title>
+      <svg className={styles.mark} viewBox="0 0 29 29" role="img" aria-labelledby={titleId}>
+        <title id={titleId}>handout</title>
         <rect
           x="1"
           y="1"

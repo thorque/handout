@@ -28,6 +28,12 @@ function focusableIn(panel: HTMLElement): HTMLElement[] {
   return [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)];
 }
 
+/** Whether a click on this node hands the focus to a control of its own. */
+function isFocusable(target: Node): boolean {
+  const element = target instanceof Element ? target : target.parentElement;
+  return element?.closest(FOCUSABLE) !== null && element !== null;
+}
+
 /** A length the design keeps in a token, read off the element so it stays there. */
 function tokenPixels(element: HTMLElement, name: string): number {
   const raw = getComputedStyle(element).getPropertyValue(name);
@@ -38,8 +44,10 @@ function tokenPixels(element: HTMLElement, name: string): number {
 /**
  * The design's Popover. It hangs off its trigger with `aria-haspopup="dialog"` and
  * `aria-expanded`, and it is closed without changes at any time — through "Schließen",
- * through `Escape`, or by clicking beside it. All three paths put the focus back on the
- * trigger; losing it to `<body>` is the regression this component is written against.
+ * through `Escape`, or by clicking beside it. Losing the focus to `<body>` is the
+ * regression this component is written against: "Schließen" and `Escape` always put it
+ * back on the trigger, and so does a click that lands on nothing focusable. A click that
+ * lands on another control leaves the focus there, where the user just put it.
  *
  * The panel is rendered only while it is open, not hidden with CSS, so a closed popover
  * is out of the tab order and out of the accessibility tree.
@@ -62,9 +70,9 @@ export function Popover({
   const panelId = useId();
   const headingId = `${panelId}-heading`;
 
-  const close = useCallback(() => {
+  const close = useCallback((restoreFocus = true) => {
     setOpen(false);
-    trigger.current?.focus();
+    if (restoreFocus) trigger.current?.focus();
   }, []);
 
   // Placement and the first focus, both once the panel is in the document and measurable.
@@ -91,11 +99,18 @@ export function Popover({
       const target = event.target as Node;
       if (panel.current?.contains(target) === true) return;
       if (trigger.current?.contains(target) === true) return;
+
+      // Where the focus goes depends on what was clicked. Clicking a control means going
+      // there, and taking that focus back — one microtask after the browser's own default
+      // action, as this used to — would leave a field the user just clicked unusable.
+      // Clicking anywhere else would drop the focus on <body>, and that is the loss the
+      // design guards against: there the trigger gets it back.
+      if (isFocusable(target)) {
+        close(false);
+        return;
+      }
+
       close();
-      // The browser moves the focus itself as the default action of this very mousedown —
-      // onto whatever was clicked, or off everything when that is not focusable. Claiming
-      // the focus back one microtask later is what makes the outside click behave like the
-      // other two close paths instead of dropping the focus on <body>.
       queueMicrotask(() => trigger.current?.focus());
     };
 
@@ -160,7 +175,13 @@ export function Popover({
             <h2 id={headingId} className={styles.heading}>
               {heading}
             </h2>
-            <button type="button" className="ho-link ho-touch" onClick={close}>
+            <button
+              type="button"
+              className="ho-link ho-touch"
+              onClick={() => {
+                close();
+              }}
+            >
               {closeLabel}
             </button>
           </div>

@@ -21,4 +21,25 @@ describe('Wordmark', () => {
     expect(screen.getByRole('img', { name: 'handout' })).toBeDefined();
     expect(words()).toHaveLength(0);
   });
+
+  it('gives every lockup in a document its own title id', () => {
+    // Three of them share the sample page. A constant id would make two of the three
+    // point their aria-labelledby at the first one's title.
+    render(
+      <div>
+        <Wordmark />
+        <Wordmark />
+        <Wordmark markOnly />
+      </div>,
+    );
+
+    const marks = screen.getAllByRole('img', { name: 'handout' });
+    expect(marks).toHaveLength(3);
+
+    const ids = marks.map((mark) => mark.getAttribute('aria-labelledby'));
+    expect(new Set(ids).size).toBe(3);
+    for (const id of ids) {
+      expect(document.querySelectorAll(`[id="${id ?? ''}"]`)).toHaveLength(1);
+    }
+  });
 });
