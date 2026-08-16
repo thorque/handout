@@ -283,6 +283,16 @@ await check('design-no-react-page', async () => {
   const markup = html.replace(/<!--[\s\S]*?-->/g, '');
   assert(!/react/i.test(markup), 'the page mentions React');
 
+  // The mark has to be inline. A referenced SVG is a document of its own: it follows the
+  // operating system's prefers-color-scheme and cannot see the page's data-theme, so on a
+  // dark system with the page light it stands in its dark colours and vanishes. That was
+  // observed in the browser, which is why it is asserted here rather than remembered.
+  assert(!/<img\b/i.test(markup), 'the page embeds an <img>, which cannot follow its theme');
+  assert(/<svg\b/i.test(markup), 'the page has no inline SVG — the mark is missing');
+  for (const brandFile of ['brand/wordmark.svg', 'brand/mark.svg']) {
+    assert(!markup.includes(brandFile), `the page references ${brandFile} instead of inlining it`);
+  }
+
   for (const reference of localReferences(html)) {
     const referenced = await fetch(new URL(reference, `${WEB_ORIGIN}/`));
     assert(referenced.status === 200, `${reference} answered ${referenced.status}`);

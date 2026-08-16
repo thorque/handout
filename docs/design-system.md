@@ -248,27 +248,38 @@ The rule behind the three: the accent square is ≈ 0.44 × the box and is centr
 bottom-right corner. One SVG is authored from the 24 px cell (`viewBox="0 0 29 29"`, frame
 1…23 with a 2-wide stroke, square 19…29) and scales.
 
-| File                                                        | Colours                                                                |
-| ----------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `brand/mark.svg`, `brand/wordmark.svg`, `brand/favicon.svg` | literals, in an internal `<style>` with a `prefers-color-scheme` block |
-| `web/src/components/Wordmark.tsx`                           | `currentColor` and `var(--ho-accent)`, live                            |
+| File                                                                      | Colours                                                                |
+| ------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `brand/mark.svg`, `brand/wordmark.svg`, `brand/favicon.svg`               | literals, in an internal `<style>` with a `prefers-color-scheme` block |
+| `web/src/components/Wordmark.tsx`, and the inline copy in `no-react.html` | `currentColor` and `var(--ho-accent)`, live                            |
 
 **The colour literals in the three files under `brand/` are the one sanctioned duplication
 of token values in this repository**, and they are why those files carry a
 `prefers-color-scheme` block of their own.
 
-A file referenced as a favicon or through `<img>` is a **document of its own**: it inherits
-neither the page's custom properties nor its `currentColor` — `currentColor` resolves
-against the embedded document's own initial colour, which is near-black in both themes.
-A mark drawn with `currentColor` therefore stands near-black on the dark page, at a
-contrast of about 1.1:1. The theme switch has to happen inside the file, and Chrome and
-Firefox honour the block for both `<img>` and favicons.
+### On a page, the mark goes inline. Never `<img>`.
 
-Its one limit: those files follow the **operating system**, not a stored choice, because a
-separate document cannot see this application's `data-theme`. An explicitly chosen light
-theme on a dark system therefore shows the dark-mode mark. The in-app lockup
-(`Wordmark.tsx`) is inline SVG and has no such limit — it follows the page live, which is
-why it is a component and not an `<img>`.
+Two facts about a referenced SVG, both **measured in the browser**, not assumed:
+
+1. It is a **document of its own** and inherits nothing from the page — not the custom
+   properties, and not `currentColor`, which resolves against the embedded document's own
+   near-black initial colour. A mark drawn with `currentColor` therefore stands near-black
+   on the dark page, at about 1.1:1.
+2. It **does** evaluate `prefers-color-scheme`, against the **operating system**. That is
+   what makes the internal block work — and it is also why the block alone is not enough:
+   the file follows the system while the page follows `data-theme`, so with a dark system
+   and the page set to light the mark appears in its dark colours on sand and is gone. That
+   is not a corner case; it is the state the page was first opened in.
+
+So a mark **on a page is written inline**, where it inherits `currentColor` and reads
+`var(--ho-accent)` and therefore follows the page in both modes and under an explicit
+choice. `Wordmark.tsx` does this for the application, and `no-react.html` does it by hand,
+which is the route HAN-20's password page has to take. The `design-no-react-page` smoke
+check fails if an `<img>` or a reference to a brand file reappears on that page.
+
+The three files under `brand/` keep their internal blocks: they are the fallback for every
+embedding that _cannot_ be inline. A favicon is the clearest of those — it cannot be inline
+by nature, and following the operating system is right for it.
 
 No `.ico` ships: ImageMagick is present in this container but has no SVG delegate, so a
 generated icon could not be verified. Older Safari therefore shows no icon, which is

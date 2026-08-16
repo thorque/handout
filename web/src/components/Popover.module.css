@@ -38,6 +38,17 @@
   gap: var(--ho-space-5);
 }
 
+/* The rhythm the export draws inside the panel: 12 px from the head to the first piece,
+   8 px between the pieces that follow. Without it everything the panel is given falls
+   onto everything else — a panel is a stack, and only the panel can know that. */
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ho-space-4);
+  margin-top: var(--ho-space-5);
+}
+
 .heading {
   margin: 0;
   font-size: var(--ho-text-md);

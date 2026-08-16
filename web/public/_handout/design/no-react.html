@@ -20,7 +20,32 @@
   <body>
     <div class="page">
       <header class="header">
-        <img src="/_handout/design/brand/wordmark.svg" alt="handout" width="165" height="44" />
+        <!--
+          The mark is INLINE, never <img>. A referenced SVG is a document of its own: it
+          evaluates prefers-color-scheme against the operating system and cannot see this
+          page's data-theme, so on a dark system with the page forced light the mark stands
+          in its dark colours on sand and disappears. Measured in the browser, not assumed.
+          Inline it inherits currentColor and reads var(--ho-accent), so it follows the page
+          in both modes and under an explicit choice. HAN-20's password page takes this
+          route, which is why this page shows it rather than the broken one.
+        -->
+        <span class="lockup">
+          <svg class="mark" viewBox="0 0 29 29" role="img" aria-labelledby="wordmark-title">
+            <title id="wordmark-title">handout</title>
+            <rect
+              x="1"
+              y="1"
+              width="22"
+              height="22"
+              rx="2"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            />
+            <rect class="mark-accent" x="19" y="19" width="10" height="10" />
+          </svg>
+          <span class="word">handout</span>
+        </span>
       </header>
 
       <main class="main">
@@ -81,6 +106,28 @@
       .header {
         padding-bottom: var(--ho-space-7);
         border-bottom: var(--ho-border-hairline) solid var(--ho-border);
+      }
+      /* The same tokens web/src/components/Wordmark.tsx uses, in a page that has no
+         components — which is the whole point of this page. */
+      .lockup {
+        display: inline-flex;
+        align-items: center;
+        gap: var(--ho-space-8);
+        color: var(--ho-fg);
+      }
+      .mark {
+        width: calc(var(--ho-brand-mark) * 29 / 24);
+        height: calc(var(--ho-brand-mark) * 29 / 24);
+        flex: none;
+      }
+      .mark-accent {
+        fill: var(--ho-accent);
+      }
+      .word {
+        font-size: var(--ho-text-xl);
+        line-height: var(--ho-leading-xl);
+        font-weight: var(--ho-weight-bold);
+        letter-spacing: var(--ho-brand-tracking);
       }
       .main {
         margin-top: var(--ho-space-9);

@@ -185,7 +185,7 @@ export function Popover({
               {closeLabel}
             </button>
           </div>
-          {children}
+          <div className={styles.content}>{children}</div>
         </div>
       )}
     </span>

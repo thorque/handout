@@ -6,6 +6,16 @@
   list-style: none;
 }
 
+/* The export's row is a wrapping flex line with 12 px between its columns. A row that
+   takes several children and gives them no rhythm would put them on top of each other,
+   which is the same defect the popover had. */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--ho-space-5);
+}
+
 .row:hover {
   background: var(--ho-surface-sunken);
 }
