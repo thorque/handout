@@ -224,7 +224,17 @@ export function DesignSystemPage() {
           >
             <Switch label="Passwortschutz" checked={protectedOn} onChange={setProtectedOn} />
             <TextField label="Passwort" mono defaultValue="kiesel-3555" readOnly />
-            <Button variant="secondary">Neues Passwort erzeugen</Button>
+            {/*
+              The caesura before the last action, as the export draws it: a hairline with
+              16 px above and 12 px below. It lives here and not in Popover, because a
+              component that takes arbitrary children cannot know where a composition
+              breaks — the smaller intervention is one element in the composition that
+              needs it, rather than a section slot every caller would have to learn.
+            */}
+            <div className={styles.popoverFooter}>
+              <Button variant="secondary">Neues Passwort erzeugen</Button>
+              <Hint>Bereits verteilte Passwörter gelten danach nicht mehr.</Hint>
+            </div>
           </Popover>
         </State>
       </Section>

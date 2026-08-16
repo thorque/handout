@@ -25,10 +25,11 @@
   color: var(--ho-fg-muted);
 }
 
+/* 24 px from a section's rule to its content, as the export sets on every section header. */
 .section {
   display: flex;
   flex-direction: column;
-  gap: var(--ho-space-6);
+  gap: var(--ho-space-8);
 }
 
 .heading {
@@ -40,11 +41,13 @@
   font-weight: var(--ho-weight-medium);
 }
 
+/* 16 px between specimens, the distance the export keeps between the rows and the items
+   of its own specimen strips. */
 .body {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: var(--ho-space-8);
+  gap: var(--ho-space-6);
 }
 
 .state {
@@ -83,7 +86,9 @@
   color: var(--ho-fg-muted);
   border: var(--ho-border-hairline) solid var(--ho-border);
   border-radius: var(--ho-radius-sm);
+  /* The shorthand first — it resets font-size, so the size has to follow it, not lead. */
   font: inherit;
+  font-size: var(--ho-text-sm);
   cursor: pointer;
 }
 
@@ -107,4 +112,17 @@
   font-size: var(--ho-text-md);
   line-height: var(--ho-leading-md);
   font-weight: var(--ho-weight-medium);
+}
+
+/* The popover's last block: hairline, 16 px above it, 12 px below, then the action and its
+   consequence 8 px apart — the measurements the export draws. align-items keeps the button
+   at its natural width inside a block that spans the panel. */
+.popoverFooter {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--ho-space-4);
+  margin-top: var(--ho-space-6);
+  padding-top: var(--ho-space-5);
+  border-top: var(--ho-border-hairline) solid var(--ho-border);
 }

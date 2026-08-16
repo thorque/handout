@@ -38,15 +38,27 @@
   gap: var(--ho-space-5);
 }
 
-/* The rhythm the export draws inside the panel: 12 px from the head to the first piece,
-   8 px between the pieces that follow. Without it everything the panel is given falls
-   onto everything else — a panel is a stack, and only the panel can know that. */
+/* The panel is a plain block stack, built the way the export builds it: every piece
+   carries its own distance to the one above. 12 px from the head to the first, 8 px
+   between the rest.
+
+   Margins rather than `gap`, for two reasons the export makes plain. A composition that
+   needs a caesura — the export draws a hairline before "Neues Passwort erzeugen", with
+   16 px above it and 12 px below — can state its own margin-top, while a gap cannot be
+   cancelled and would add to it. And block flow gives each piece the width it should
+   have: a field fills the panel because .ho-field is a block-level flex container, a
+   button keeps its natural width because it is inline-flex. A flex column with
+   align-items would have to decide that centrally, and would decide it wrong for one of
+   the two. */
 .content {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--ho-space-4);
   margin-top: var(--ho-space-5);
+}
+
+/* :where() so this default carries no specificity at all: any piece that states its own
+   distance — the caesura below, for one — wins over it regardless of which stylesheet the
+   bundler happens to emit first. A default that depends on file order is not a default. */
+:where(.content) > * + * {
+  margin-top: var(--ho-space-4);
 }
 
 .heading {

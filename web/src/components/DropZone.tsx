@@ -112,7 +112,7 @@ export function DropZone({
       {shown === 'over' && (
         <div className={styles.centred}>
           <p className={styles.leadAccent}>{OVER_LABEL}</p>
-          {fileName !== undefined && <p className={styles.meta}>{fileName}</p>}
+          {fileName !== undefined && <p className={cx(styles.meta, styles.metaFile)}>{fileName}</p>}
         </div>
       )}
 
@@ -123,7 +123,7 @@ export function DropZone({
             <div ref={fill} className={styles.fill} />
           </div>
           {/* The percentage as a word, not only as a bar width — a width has no name. */}
-          <p className={styles.meta}>{progress ?? 0} %</p>
+          <p className={cx(styles.meta, styles.metaProgress)}>{progress ?? 0} %</p>
         </div>
       )}
 

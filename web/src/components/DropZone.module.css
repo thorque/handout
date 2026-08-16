@@ -44,11 +44,21 @@
   color: var(--ho-error);
 }
 
+/* The quiet line under something. Its distance differs by state, exactly as the export
+   draws it: 12 px under "Loslassen", 8 px under the progress bar, 4 px under the failure. */
 .meta {
   margin: var(--ho-space-2) 0 0;
   font-size: var(--ho-text-sm);
   line-height: var(--ho-leading-sm);
   color: var(--ho-fg-muted);
+}
+
+.metaFile {
+  margin-top: var(--ho-space-5);
+}
+
+.metaProgress {
+  margin-top: var(--ho-space-4);
 }
 
 .picker {
