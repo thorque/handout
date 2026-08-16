@@ -25,7 +25,9 @@
   cursor: pointer;
 }
 
+/* The underline of the row's own action. Its offset is the browser's, not a copy of the
+   one .ho-link:hover carries — a value restated here would be exactly the drift this
+   design system is set up against. */
 .action:hover {
   text-decoration: underline;
-  text-underline-offset: 3px;
 }

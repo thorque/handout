@@ -42,7 +42,11 @@ function isColourish(property: string): boolean {
     property === 'outline-color' ||
     property === 'fill' ||
     property === 'stroke' ||
-    property === 'box-shadow'
+    property === 'box-shadow' ||
+    // The shorthands carry a colour and a width at once, so they are checked as both.
+    property === 'border' ||
+    /^border-(top|right|bottom|left)$/.test(property) ||
+    property === 'outline'
   );
 }
 
@@ -55,44 +59,57 @@ function isSpaceish(property: string): boolean {
     property.endsWith('-radius') ||
     property === 'font-size' ||
     property === 'line-height' ||
+    property === 'text-underline-offset' ||
+    property === 'text-decoration-thickness' ||
     ['top', 'right', 'bottom', 'left'].includes(property)
   );
 }
 
 /**
- * Values that are not design decisions and therefore need no token: the absence of a
- * value, a full box, the browser's own answer, and the inherited text colour.
+ * The only values that are not design decisions: the absence of a value, a full box, the
+ * browser's own answer, and the inherited text colour. Exactly the list the plan names —
+ * anything beyond it belongs in tokens.css.
  */
 const FREE_VALUES = new Set([
   '0',
-  '0px',
   '100%',
   'auto',
   'inherit',
-  'initial',
-  'unset',
   'currentcolor',
   'transparent',
   'none',
 ]);
 
-/** A value is allowed when every part of it is a token, a free value, or a keyword. */
-function isTokenOnly(value: string): boolean {
-  const cleaned = value
-    .replace(/var\(\s*(--[\w-]+)[^)]*\)/g, ' ')
-    // calc() may combine tokens with bare ratios — the ratio carries no design decision.
-    .replace(/calc\(([^()]*)\)/g, ' $1 ')
-    .replace(/[()*/+]/g, ' ');
+/**
+ * The only keywords a checked shorthand may carry. They are shape, not colour, and no
+ * colour name is among them — which is the point: `red` and `white` are not keywords here,
+ * they are hard-coded colours.
+ */
+const LINE_STYLES = new Set(['solid', 'dashed', 'dotted']);
+
+/** A value is allowed when nothing is left of it once tokens and free values are removed. */
+export function isTokenOnly(value: string): boolean {
+  let cleaned = value;
+  // A token, with or without a fallback, is the allowed case. Repeated, so a nested
+  // fallback collapses too.
+  for (let previous = ''; cleaned !== previous;) {
+    previous = cleaned;
+    cleaned = cleaned.replace(/var\(\s*--[\w-]+[^()]*\)/g, ' ');
+  }
+  // calc() may combine tokens with bare ratios — a ratio carries no design decision.
+  cleaned = cleaned.replace(/calc\(([^()]*)\)/g, ' $1 ').replace(/\s[*/+-]\s/g, ' ');
+
+  // Anything still holding a bracket is a function this check cannot vouch for: rgb(),
+  // hsl(), color-mix(), url(). Those are precisely the values that must not be here.
+  if (/[()]/.test(cleaned)) return false;
 
   return cleaned
     .split(/[\s,]+/)
     .filter((part) => part.length > 0)
-    .every(
-      (part) =>
-        FREE_VALUES.has(part.toLowerCase()) ||
-        /^-?\d+(\.\d+)?$/.test(part) ||
-        /^[a-z-]+$/i.test(part),
-    );
+    .every((part) => {
+      const lower = part.toLowerCase();
+      return FREE_VALUES.has(lower) || LINE_STYLES.has(lower) || /^-?\d+(\.\d+)?$/.test(part);
+    });
 }
 
 interface Declaration {
@@ -116,6 +133,52 @@ function declarationsOf(css: string): Declaration[] {
   }
   return found;
 }
+
+describe('the value check itself', () => {
+  // The scan is only as good as this predicate, and a predicate that says yes to
+  // `rgb(1, 2, 3)` makes the whole suite decorative. So it is tested directly.
+  const allowed = [
+    'var(--ho-accent)',
+    'var(--ho-progress, 0%)',
+    '0',
+    '0 auto',
+    'var(--ho-space-2) 0 0',
+    'currentColor',
+    'transparent',
+    'none',
+    'inherit',
+    'calc(100% + var(--ho-space-4))',
+    'var(--ho-border-hairline) solid var(--ho-border)',
+    'var(--ho-border-hairline) dashed var(--ho-border-strong)',
+  ];
+
+  const rejected = [
+    '#fff',
+    '#b23a16',
+    'rgb(1, 2, 3)',
+    'rgba(0, 0, 0, 0.5)',
+    'hsl(20, 80%, 40%)',
+    'color-mix(in srgb, var(--ho-accent), white)',
+    'red',
+    'white',
+    'black',
+    '12px',
+    '1px solid var(--ho-border)',
+    '0 8px 24px -10px rgba(28, 27, 24, 0.32)',
+  ];
+
+  for (const value of allowed) {
+    it(`accepts ${value}`, () => {
+      expect(isTokenOnly(value)).toBe(true);
+    });
+  }
+
+  for (const value of rejected) {
+    it(`rejects ${value}`, () => {
+      expect(isTokenOnly(value)).toBe(false);
+    });
+  }
+});
 
 describe('token-only components', () => {
   it('finds the sources it is supposed to scan', () => {

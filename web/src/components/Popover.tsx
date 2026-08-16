@@ -138,7 +138,7 @@ export function Popover({
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
         aria-label={triggerLabel}
-        className={styles.trigger}
+        className="ho-link ho-touch"
         onClick={() => {
           setOpen((previous) => !previous);
         }}

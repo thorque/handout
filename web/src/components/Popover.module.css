@@ -7,25 +7,6 @@
   display: inline-block;
 }
 
-.trigger {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--ho-space-3);
-  min-height: var(--ho-space-9);
-  padding: 0;
-  background: none;
-  border: 0;
-  color: var(--ho-link);
-  font: inherit;
-  cursor: pointer;
-}
-
-.trigger:hover {
-  color: var(--ho-link-hover);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .panel {
   --ho-popover-edge: var(--ho-space-5);
 
