@@ -150,6 +150,16 @@
   --ho-z-toast: 200;
 }
 
+/* Added by Handout, not part of the 1.0.0 export: three values the design draws but does
+   not name as tokens — the wordmark's tracking (-0.02em, while xl's own is -0.015em), the
+   32 px display mark, and the popover's 292 px width. They are here rather than in a
+   component so no component has to hard-code them. Mode-independent, hence only in :root. */
+:root {
+  --ho-brand-tracking: -0.02em;
+  --ho-brand-mark: 32px;
+  --ho-popover-width: 292px;
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     --ho-bg: #171614;

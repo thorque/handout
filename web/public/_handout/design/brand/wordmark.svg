@@ -1,0 +1,12 @@
+<!-- Mark plus word, at the display size the design draws: a 32 px mark, 24 px gap, and
+     "handout" at 26/32, weight 700, tracking -0.02em (= -0.52 px at 26 px). Standalone
+     file for documentation and for anything referencing the logo by URL; the in-app
+     wordmark is web/src/components/Wordmark.tsx, which follows the theme live. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 165 44" width="165" height="44" role="img" aria-labelledby="handout-wordmark-title">
+  <title id="handout-wordmark-title">handout</title>
+  <g transform="translate(0 2) scale(1.3333)">
+    <rect x="1" y="1" width="22" height="22" rx="2" fill="none" stroke="currentColor" stroke-width="2" />
+    <rect x="19" y="19" width="10" height="10" fill="#b23a16" />
+  </g>
+  <text x="56" y="27" fill="currentColor" font-family="'Public Sans', system-ui, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="-0.52">handout</text>
+</svg>

@@ -1,0 +1,25 @@
+.lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ho-space-8);
+  color: var(--ho-fg);
+}
+
+/* --ho-brand-mark is the size of the frame, but the drawing is 29 units wide because the
+   accent square sticks 5 units past the corner — hence the factor. */
+.mark {
+  width: calc(var(--ho-brand-mark) * 29 / 24);
+  height: calc(var(--ho-brand-mark) * 29 / 24);
+  flex: none;
+}
+
+.accent {
+  fill: var(--ho-accent);
+}
+
+.word {
+  font-size: var(--ho-text-xl);
+  line-height: var(--ho-leading-xl);
+  font-weight: var(--ho-weight-bold);
+  letter-spacing: var(--ho-brand-tracking);
+}
