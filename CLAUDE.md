@@ -53,7 +53,8 @@ coding around it.
   publication. Redirect with a validated target, return with a short-lived one-time token,
   session scoped to that single publication. Never a cookie on the parent domain.
 - **Design tokens must work without React**, because the password page is server-rendered
-  and needs the same look as the app.
+  and needs the same look as the app. One file at `/_handout/design/tokens.css` for both
+  consumers; see `docs/design-system.md`.
 - **One identity provider per instance.** No provider picker, no provider-specific code
   paths — issuer URL, client ID and secret are the whole configuration.
 - **Never touch the delivered artifact.** Absolute paths in path mode produce a warning at
