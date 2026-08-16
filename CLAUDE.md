@@ -94,4 +94,24 @@ workspace briefing at `../../AGENTS.md`. The parts specific to this project:
   `keycloak/realm.json`; apply changes to the running instance with
   `.monoceros/bin/keycloak-realm` from the workspace root.
 
-Build, test and lint commands are added here as part of HAN-5.
+The repository is one npm project with two workspaces: `service/` (Fastify) and `web/`
+(React, Vite). Commands, all run from the project root:
+
+| Command                                   | What it does                                             |
+| ----------------------------------------- | -------------------------------------------------------- |
+| `npm install`                             | installs both workspaces                                 |
+| `npm run dev:service` / `npm run dev:web` | the two dev servers (usually via `monoceros-ctl`)        |
+| `npm run test`                            | unit and integration tests of both workspaces            |
+| `npm run typecheck`                       | `tsc --noEmit`, root plus both workspaces                |
+| `npm run lint` / `npm run lint:fix`       | oxlint, type-aware, warnings are errors                  |
+| `npm run format` / `npm run format:check` | Prettier                                                 |
+| `npm run smoke`                           | end-to-end check against the two running servers         |
+| `npm run verify`                          | the gate: lint → format:check → typecheck → test → smoke |
+
+`npm run verify` needs both servers running (`monoceros-ctl start handout-app`), because
+`smoke` talks to them over the network.
+
+TypeScript 7 with oxlint (`oxlint-tsgolint`) for type-aware linting; `typescript-eslint`
+is deliberately not used, it would pin the project to TypeScript 5.x. `baseUrl` and
+`paths` do not exist in TypeScript 7 — use relative imports. Prettier formats; see
+`README.md` for the reasoning behind both.
