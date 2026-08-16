@@ -11,6 +11,8 @@ publisher front end (`web/`), as two npm workspaces of one root project.
 ## Prerequisites
 
 - Node.js ≥ 22.18 (the repository is developed on 22.23) and the npm that ships with it.
+- A PostgreSQL server. Inside the Monoceros workbench one is already running and reachable
+  through `POSTGRES_URL`; nothing has to be configured for it.
 
 ## Getting started
 
@@ -20,6 +22,33 @@ cp .env.example .env
 npm run dev:service   # http://localhost:3000
 npm run dev:web       # http://localhost:5173
 ```
+
+The service applies its migrations at start and refuses to start when they fail — it never
+serves without its schema. `/_handout/api/health` reports the database, and answers 503
+with `"status": "degraded"` when the schema is not there.
+
+## Configuration
+
+Everything is read from the environment; `.env` is loaded for local development.
+
+| Variable                  | Meaning                                                                  |
+| ------------------------- | ------------------------------------------------------------------------ |
+| `PORT`, `HOST`            | where the service listens; defaults `3000` and `0.0.0.0`                 |
+| `LOG_LEVEL`               | Fastify's log level, default `info`                                      |
+| `HANDOUT_DATA_DIR`        | where published content will live, absolute                              |
+| `DATABASE_URL`            | the database; falls back to `POSTGRES_URL`, which the workbench provides |
+| `HANDOUT_DATABASE_SCHEMA` | the schema migrations and queries work in, default `public`              |
+| `HANDOUT_PASSWORD_KEY`    | **required**, 32 bytes base64 — encrypts publication passwords           |
+
+`HANDOUT_PASSWORD_KEY` has no default and no fallback: publication passwords have to stay
+readable for their owner, so they are encrypted rather than hashed, and losing the key
+loses every password. Generate one with `openssl rand -base64 32`, keep it out of every
+tracked file, and put it in the backup plan. See [`docs/database.md`](docs/database.md).
+
+The database tests create a schema of their own (`handout_test_<random>`), migrate it and
+drop it again, so a test run leaves the development database untouched. They take the URL
+from `HANDOUT_TEST_DATABASE_URL`, `DATABASE_URL` or `POSTGRES_URL`; with none of them set
+they skip themselves and say so, with one set but unreachable they fail.
 
 Inside the Monoceros workbench both servers are started together with
 `monoceros-ctl start handout-app`, and are then reachable at
@@ -51,6 +80,7 @@ origin.
 ```
 service/          the HTTP service (Fastify)
   src/            application code, unit tests next to it
+  migrations/     plain SQL, NNNN_name.sql, applied at start
   test/           integration tests, driven through Fastify's app.inject()
 web/              the publisher front end (React, Vite)
   src/            components and their tests
@@ -79,3 +109,6 @@ docs/             decisions that outlive a single story
 - **The application owns the `/_handout/` path namespace**, everything else at the root is
   publication space. Read [`docs/url-namespace.md`](docs/url-namespace.md) before adding a
   route.
+- **Direct SQL, no ORM**, and only through the access layer in `service/src/publications/`.
+  [`docs/database.md`](docs/database.md) has the schema and the two invariants it protects:
+  the address part of a publication never changes, and an address is never reissued.
