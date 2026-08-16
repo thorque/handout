@@ -19,6 +19,8 @@ export default defineConfig({
     environment: 'jsdom',
     globals: false,
     setupFiles: ['./src/test-setup.ts'],
-    include: ['src/**/*.test.tsx'],
+    // Both extensions: the theme, route, contrast and token-only suites are plain .ts and
+    // would silently never run under a .tsx-only pattern.
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 });
