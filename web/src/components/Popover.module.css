@@ -1,0 +1,66 @@
+/* The design draws no class for the popover, so all of it is here — in tokens only.
+   --ho-popover-edge is the distance the panel keeps from the edge of the viewport; it is
+   declared here so the placement code can read it off the element instead of repeating
+   the number in JavaScript. */
+.anchor {
+  position: relative;
+  display: inline-block;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ho-space-3);
+  min-height: var(--ho-space-9);
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--ho-link);
+  font: inherit;
+  cursor: pointer;
+}
+
+.trigger:hover {
+  color: var(--ho-link-hover);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.panel {
+  --ho-popover-edge: var(--ho-space-5);
+
+  position: absolute;
+  left: 0;
+  z-index: var(--ho-z-dialog);
+  width: var(--ho-popover-width);
+  padding: var(--ho-space-6);
+  background: var(--ho-surface);
+  border: var(--ho-border-hairline) solid var(--ho-border-strong);
+  border-radius: var(--ho-radius-md);
+  box-shadow: var(--ho-shadow-overlay);
+  text-align: left;
+}
+
+/* 8 px from the trigger, and never over it — the offset is what guarantees the second. */
+.below {
+  top: calc(100% + var(--ho-space-4));
+}
+
+.above {
+  bottom: calc(100% + var(--ho-space-4));
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ho-space-5);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--ho-text-md);
+  line-height: var(--ho-leading-md);
+  font-weight: var(--ho-weight-medium);
+  min-width: 0;
+}

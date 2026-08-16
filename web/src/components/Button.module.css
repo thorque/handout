@@ -1,0 +1,6 @@
+/* Only what .ho-btn does not have: the 48 px size of the password page. */
+.lg {
+  min-height: var(--ho-control-lg);
+  padding: 0 var(--ho-space-8);
+  font-size: var(--ho-text-md);
+}

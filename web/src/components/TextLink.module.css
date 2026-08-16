@@ -1,0 +1,8 @@
+/* .ho-link carries the look and .ho-touch the touch target; only the confirmation is new. */
+.confirmation {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ho-space-3);
+  color: var(--ho-success);
+  font-size: var(--ho-text-xs);
+}

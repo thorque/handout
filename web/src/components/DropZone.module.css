@@ -1,0 +1,97 @@
+/* .ho-drop carries the resting surface and the 'over' state. Added here: the two solid
+   states, the hidden picker input and the progress bar the class layer has no shape for. */
+.drop {
+  text-align: left;
+}
+
+.busy,
+.error {
+  border-style: solid;
+}
+
+.error {
+  border-color: var(--ho-error);
+  background: var(--ho-error-quiet);
+}
+
+.centred {
+  text-align: center;
+}
+
+.lead {
+  margin: 0;
+  font-size: var(--ho-text-md);
+  line-height: var(--ho-leading-md);
+}
+
+.leadAccent {
+  margin: 0;
+  font-size: var(--ho-text-md);
+  line-height: var(--ho-leading-md);
+  color: var(--ho-error);
+}
+
+.body {
+  margin: 0;
+  font-size: var(--ho-text-base);
+  line-height: var(--ho-leading-base);
+}
+
+.bodyError {
+  margin: 0;
+  font-size: var(--ho-text-base);
+  line-height: var(--ho-leading-base);
+  color: var(--ho-error);
+}
+
+.meta {
+  margin: var(--ho-space-2) 0 0;
+  font-size: var(--ho-text-sm);
+  line-height: var(--ho-leading-sm);
+  color: var(--ho-fg-muted);
+}
+
+.picker {
+  margin-top: var(--ho-space-5);
+  position: relative;
+}
+
+/* Visually hidden, not removed: a display:none input is not focusable, and Tab has to
+   reach the picker. */
+.input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.bar {
+  height: var(--ho-space-2);
+  margin-top: var(--ho-space-5);
+  background: var(--ho-border);
+  border-radius: var(--ho-radius-sm);
+  overflow: hidden;
+}
+
+.fill {
+  width: var(--ho-progress, 0%);
+  height: 100%;
+  background: var(--ho-accent);
+  transition: width var(--ho-motion-base) var(--ho-easing);
+}
+
+.failure {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ho-space-4);
+}
+
+.glyph {
+  color: var(--ho-error);
+  font-size: var(--ho-text-md);
+  line-height: var(--ho-leading-md);
+}

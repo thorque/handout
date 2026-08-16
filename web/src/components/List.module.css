@@ -1,0 +1,31 @@
+/* .ho-list and .ho-list-row carry contour, surface and hairlines. What is added here is
+   only what a <ul> needs to stop looking like a <ul>, and the interactive row's own box. */
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row:hover {
+  background: var(--ho-surface-sunken);
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  gap: var(--ho-space-5);
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.action:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
