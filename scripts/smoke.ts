@@ -123,6 +123,17 @@ await check('service-health', async () => {
   serviceHealthBody = body;
 });
 
+await check('service-database', async () => {
+  // The end-to-end proof that the migrations ran at start: health reports the schema, not
+  // merely a socket that answered.
+  const response = await fetch(`${SERVICE_ORIGIN}/_handout/api/health`);
+  const body = (await response.json()) as { database?: string };
+  assert(
+    body.database === 'ok',
+    `expected database "ok", got ${JSON.stringify(body.database)} — did the migrations run?`,
+  );
+});
+
 await check('service-bind', async () => {
   const response = await fetch(`http://${lanIp}:3000/_handout/api/health`);
   assert(response.status === 200, `expected 200 on ${lanIp}:3000, got ${response.status}`);
