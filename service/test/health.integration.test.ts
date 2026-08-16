@@ -11,7 +11,13 @@ describe('GET /_handout/api/health', () => {
   let app: FastifyInstance;
 
   beforeAll(() => {
-    app = buildApp(loadConfig({ LOG_LEVEL: 'silent' }));
+    app = buildApp(
+      loadConfig({
+        LOG_LEVEL: 'silent',
+        POSTGRES_URL: 'postgresql://user:pass@host:5432/db',
+        HANDOUT_PASSWORD_KEY: Buffer.alloc(32, 7).toString('base64'),
+      }),
+    );
   });
 
   afterAll(async () => {
