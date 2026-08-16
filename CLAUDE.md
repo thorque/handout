@@ -58,6 +58,10 @@ coding around it.
   paths — issuer URL, client ID and secret are the whole configuration.
 - **Never touch the delivered artifact.** Absolute paths in path mode produce a warning at
   publish time and nothing else.
+- **The application owns `/_handout/`, everything else at the root is publication space.**
+  API, app routes, the password page and the built assets all live under that prefix; a
+  generated slug must never be able to produce it, so the slug alphabet excludes `_`. See
+  `docs/url-namespace.md`.
 
 ## Conventions
 
