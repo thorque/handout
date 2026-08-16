@@ -320,6 +320,23 @@ plus `aria-checked` plus the knob position; a border _style_ change plus differe
 an underline together with the colour change on a link. Focus is a ring from `--ho-focus`,
 defined once in `tokens.css` and never restated per component.
 
+`PasswordReadout` is the composed password row from the protection popover: the value on
+the sunken surface, a reveal toggle carrying `aria-pressed` with a label that changes with
+the state, and a copy action. It is a _readout_, not a field — nothing is typed into it,
+and naming it a field would invite the next story to add an input where the design has
+none. Three things about it are rules rather than choices:
+
+- The mask is always eight dots, whatever the password is. A mask that matches the length
+  gives the length away.
+- **The password never reaches a log**, not even inside a caught error — a rejected
+  `writeText` carries the very string it was called with. The failure is reported to the
+  person instead, because the clipboard API is missing outside a secure context and
+  silence there looks like a broken button.
+- The line under the field is **reserved height**, empty or not, so the panel does not jump
+  when the confirmation appears. It stands for 1.8 s, the duration the export states for
+  this confirmation. This is the one part of the copy confirmation that belongs to this
+  story; the list's own copy behaviour still belongs to the list view story.
+
 The `Popover` carries the design's obligations in full: `aria-haspopup="dialog"` and
 `aria-expanded` on the trigger, `role="dialog"` on a panel that exists only while open,
 focus moving into it, measured placement (below, above when there is no room, never over

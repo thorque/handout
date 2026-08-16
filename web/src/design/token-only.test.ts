@@ -61,6 +61,7 @@ function isSpaceish(property: string): boolean {
     property === 'line-height' ||
     property === 'text-underline-offset' ||
     property === 'text-decoration-thickness' ||
+    property === 'letter-spacing' ||
     ['top', 'right', 'bottom', 'left'].includes(property)
   );
 }

@@ -5,12 +5,14 @@ import { DropZone } from '../components/DropZone';
 import { EmptyState } from '../components/EmptyState';
 import { Hint } from '../components/Hint';
 import { List, ListRow } from '../components/List';
+import { PasswordReadout } from '../components/PasswordReadout';
 import { Popover } from '../components/Popover';
 import { StatusBadge } from '../components/StatusBadge';
 import { Switch } from '../components/Switch';
 import { TextField } from '../components/TextField';
 import { TextLink } from '../components/TextLink';
 import { Wordmark } from '../components/Wordmark';
+import { CopyIcon } from '../components/icons';
 import { useTheme, type ThemePreference } from '../theme/useTheme';
 import styles from './DesignSystemPage.module.css';
 
@@ -143,7 +145,7 @@ export function DesignSystemPage() {
                 setCopied(true);
               }}
             >
-              Kopieren
+              <CopyIcon />
             </TextLink>
           )}
         </State>
@@ -165,6 +167,9 @@ export function DesignSystemPage() {
         </State>
         <State label="Pflichtfeld">
           <TextField label="Name" required />
+        </State>
+        <State label="Passwort — anzeigen und kopieren">
+          <PasswordReadout label="Passwort" value="kiesel-3555" />
         </State>
         <State label="Schalter">
           <Switch label="Mit Passwort schützen" checked={protectedOn} onChange={setProtectedOn} />
@@ -223,7 +228,7 @@ export function DesignSystemPage() {
             heading="Prototyp Kundenportal"
           >
             <Switch label="Passwortschutz" checked={protectedOn} onChange={setProtectedOn} />
-            <TextField label="Passwort" mono defaultValue="kiesel-3555" readOnly />
+            <PasswordReadout label="Passwort" value="kiesel-3555" />
             {/*
               The caesura before the last action, as the export draws it: a hairline with
               16 px above and 12 px below. It lives here and not in Popover, because a

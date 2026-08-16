@@ -150,14 +150,17 @@
   --ho-z-toast: 200;
 }
 
-/* Added by Handout, not part of the 1.0.0 export: three values the design draws but does
+/* Added by Handout, not part of the 1.0.0 export: four values the design draws but does
    not name as tokens — the wordmark's tracking (-0.02em, while xl's own is -0.015em), the
-   32 px display mark, and the popover's 292 px width. They are here rather than in a
-   component so no component has to hard-code them. Mode-independent, hence only in :root. */
+   32 px display mark, the popover's 292 px width, and the tracking of a masked password,
+   which the design sets far wider than any text so the dots read as dots. They are here
+   rather than in a component so no component has to hard-code them. Mode-independent,
+   hence only in :root. */
 :root {
   --ho-brand-tracking: -0.02em;
   --ho-brand-mark: 32px;
   --ho-popover-width: 292px;
+  --ho-secret-tracking: 0.14em;
 }
 
 @media (prefers-color-scheme: dark) {

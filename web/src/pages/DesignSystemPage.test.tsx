@@ -22,7 +22,10 @@ describe('DesignSystemPage', () => {
     expect(screen.getAllByRole('img', { name: 'handout' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Veröffentlichen' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Ersetzen' })).toBeDefined();
-    expect(screen.getByLabelText('Passwort')).toBeDefined();
+    // "Name" rather than "Passwort": the password is now carried by PasswordReadout too,
+    // and a label that two different components answer to proves neither of them.
+    expect(screen.getAllByLabelText('Name').length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Passwort kopieren' })).toBeDefined();
     expect(screen.getAllByRole('switch').length).toBeGreaterThan(0);
     expect(screen.getByRole('list', { name: 'Veröffentlichungen' })).toBeDefined();
     expect(screen.getByLabelText('Datei auswählen')).toBeDefined();
@@ -47,7 +50,11 @@ describe('DesignSystemPage', () => {
 
     const panel = screen.getByRole('dialog', { name: 'Prototyp Kundenportal' });
     expect(panel.querySelector('[role="switch"]')).not.toBeNull();
-    expect(panel.querySelector('input')).not.toBeNull();
+    // The password is the composed row the export draws — a reveal toggle and a copy
+    // action, not a text input. A plain <input> here would be the wrong component.
+    expect(panel.querySelector('input')).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Anzeigen' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Passwort kopieren' }).length).toBeGreaterThan(0);
 
     const action = screen.getByRole('button', { name: 'Neues Passwort erzeugen' });
     const consequence = screen.getByText('Bereits verteilte Passwörter gelten danach nicht mehr.');

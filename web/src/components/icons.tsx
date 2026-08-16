@@ -73,3 +73,43 @@ export function CheckIcon() {
     </Glyph>
   );
 }
+
+/**
+ * Anzeigen — the export's 16 × 11 outline with a 4 px pupil at its centre. Both radii are
+ * inset by half the stroke, so the drawn edge sits where the export's border box sits.
+ */
+export function EyeIcon() {
+  return (
+    <Glyph>
+      <ellipse cx="8" cy="8" rx="7.25" ry="4.75" />
+      <circle cx="8" cy="8" r="2" fill="currentColor" stroke="none" />
+    </Glyph>
+  );
+}
+
+/** Verbergen — the same eye with the export's 18 px slash across it, at -30°. */
+export function EyeOffIcon() {
+  return (
+    <Glyph>
+      <ellipse cx="8" cy="8" rx="7.25" ry="4.75" />
+      <circle cx="8" cy="8" r="2" fill="currentColor" stroke="none" />
+      <path d="M0.5 12.5 15.5 3.5" />
+    </Glyph>
+  );
+}
+
+/**
+ * Kopieren — two 10 × 10 squares offset by 4, as the export draws them in both places it
+ * uses this glyph. The rear square is an L rather than a full square: the export hides its
+ * covered half by filling the front one with the surface colour, which only works when the
+ * surface is known. This icon sits on the sunken field and on a list row alike, so it
+ * simply does not draw the part that is covered.
+ */
+export function CopyIcon() {
+  return (
+    <Glyph>
+      <path d="M11 5V1H1v10h4" />
+      <rect x="5" y="5" width="10" height="10" rx="1" />
+    </Glyph>
+  );
+}
