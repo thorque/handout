@@ -120,9 +120,9 @@ colour literal in a component. `tokens.css` itself is excluded — it is the def
 The check was verified by breaking it on purpose: a `padding: 12px`, a `#fff` and a style
 prop each turn it red.
 
-Two places where a measured value legitimately reaches an element, both through a custom
-property rather than a style prop, so every value the component _chooses_ stays in the
-token layer: the drop zone's progress percentage, and nothing else.
+One place where a measured value legitimately reaches an element — the drop zone's
+progress percentage — and it goes there as a custom property rather than as a style prop,
+so every value a component _chooses_ stays in the token layer.
 
 ## Contrast
 
@@ -248,16 +248,27 @@ The rule behind the three: the accent square is ≈ 0.44 × the box and is centr
 bottom-right corner. One SVG is authored from the 24 px cell (`viewBox="0 0 29 29"`, frame
 1…23 with a 2-wide stroke, square 19…29) and scales.
 
-| File                                   | Frame colour                                          | Accent square                                                   |
-| -------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------- |
-| `brand/mark.svg`, `brand/wordmark.svg` | `currentColor`                                        | a literal — an `<img>`-referenced SVG sees no custom properties |
-| `brand/favicon.svg`                    | its own `<style>` with a `prefers-color-scheme` block | same                                                            |
-| `web/src/components/Wordmark.tsx`      | `currentColor`                                        | `var(--ho-accent)`, live                                        |
+| File                                                        | Colours                                                                |
+| ----------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `brand/mark.svg`, `brand/wordmark.svg`, `brand/favicon.svg` | literals, in an internal `<style>` with a `prefers-color-scheme` block |
+| `web/src/components/Wordmark.tsx`                           | `currentColor` and `var(--ho-accent)`, live                            |
 
-**The four colour literals in `favicon.svg` are the one sanctioned duplication of token
-values in this repository.** A favicon is one fixed file while the application has two
-themes, and an SVG file cannot read the page's custom properties, so the theme switch has
-to happen inside the file. Chrome and Firefox honour that block for SVG favicons.
+**The colour literals in the three files under `brand/` are the one sanctioned duplication
+of token values in this repository**, and they are why those files carry a
+`prefers-color-scheme` block of their own.
+
+A file referenced as a favicon or through `<img>` is a **document of its own**: it inherits
+neither the page's custom properties nor its `currentColor` — `currentColor` resolves
+against the embedded document's own initial colour, which is near-black in both themes.
+A mark drawn with `currentColor` therefore stands near-black on the dark page, at a
+contrast of about 1.1:1. The theme switch has to happen inside the file, and Chrome and
+Firefox honour the block for both `<img>` and favicons.
+
+Its one limit: those files follow the **operating system**, not a stored choice, because a
+separate document cannot see this application's `data-theme`. An explicitly chosen light
+theme on a dark system therefore shows the dark-mode mark. The in-app lockup
+(`Wordmark.tsx`) is inline SVG and has no such limit — it follows the page live, which is
+why it is a component and not an `<img>`.
 
 No `.ico` ships: ImageMagick is present in this container but has no SVG delegate, so a
 generated icon could not be verified. Older Safari therefore shows no icon, which is
