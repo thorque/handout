@@ -1,2 +1,12 @@
 # Internal working agreement, not shared through the repository
 .claude/CLAUDE.md
+
+node_modules/
+dist/
+coverage/
+.vite/
+var/
+.env
+.env.*.local
+*.log
+.DS_Store

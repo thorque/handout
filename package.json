@@ -1,0 +1,33 @@
+{
+  "name": "handout",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "workspaces": [
+    "service",
+    "web"
+  ],
+  "scripts": {
+    "dev:service": "npm run dev -w service",
+    "dev:web": "npm run dev -w web",
+    "test": "npm run test -w service && npm run test -w web",
+    "typecheck": "tsc --noEmit && npm run typecheck -w service && npm run typecheck -w web",
+    "lint": "oxlint --deny-warnings",
+    "lint:fix": "oxlint --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "smoke": "tsx scripts/smoke.ts",
+    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run smoke"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "oxlint": "^1.78.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "prettier": "^3.9.6",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}
