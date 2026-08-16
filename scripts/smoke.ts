@@ -218,6 +218,100 @@ await check('web-bind', async () => {
   assert(response.status === 200, `expected 200 on ${lanIp}:5173, got ${response.status}`);
 });
 
+let tokensCss = '';
+
+await check('design-tokens', async () => {
+  const response = await fetch(`${WEB_ORIGIN}/_handout/design/tokens.css`);
+  assert(response.status === 200, `expected 200, got ${response.status}`);
+  // Not the SPA fallback: a dev server answering HTML here would 200 and look fine.
+  assert(
+    contentType(response).includes('text/css') && !contentType(response).includes('text/html'),
+    `expected CSS, got "${contentType(response)}"`,
+  );
+
+  tokensCss = await response.text();
+  for (const needle of [
+    '--ho-accent',
+    '--ho-bg',
+    'prefers-color-scheme: dark',
+    "[data-theme='dark']",
+  ]) {
+    assert(tokensCss.includes(needle), `the served tokens.css has lost ${needle}`);
+  }
+});
+
+await check('design-fonts', async () => {
+  const faces = [...tokensCss.matchAll(/@font-face\s*\{/g)].length;
+  assert(faces === 5, `expected 5 @font-face blocks, found ${faces} — a weight went missing`);
+
+  // The design's promise: no request to a third party when a page is opened.
+  assert(!tokensCss.includes('fonts.googleapis.com'), 'tokens.css still loads from Google');
+  assert(!tokensCss.includes('fonts.gstatic.com'), 'tokens.css still loads from gstatic');
+
+  const urls = [...tokensCss.matchAll(/url\(['"]?([^'")]+\.woff2)['"]?\)/g)].map(
+    (match) => match[1] ?? '',
+  );
+  assert(urls.length === 5, `expected 5 woff2 URLs, found ${urls.length}`);
+
+  for (const url of urls) {
+    const response = await fetch(new URL(url, `${WEB_ORIGIN}/`));
+    assert(response.status === 200, `${url} answered ${response.status}`);
+    // A wrong path is invisible in a screenshot, because the fallback stack hides it —
+    // so the type is asserted, never just the status.
+    const type = contentType(response);
+    assert(
+      type.includes('font') || type.includes('woff'),
+      `${url} served as "${type}", not a font`,
+    );
+    const body = await response.arrayBuffer();
+    assert(body.byteLength > 0, `${url} served an empty body`);
+  }
+});
+
+await check('design-no-react-page', async () => {
+  const response = await fetch(`${WEB_ORIGIN}/_handout/design/no-react.html`);
+  assert(response.status === 200, `expected 200, got ${response.status}`);
+  assert(
+    contentType(response).includes('text/html'),
+    `expected HTML, got "${contentType(response)}"`,
+  );
+
+  const html = await response.text();
+  assert(!/<script\b[^>]*\btype\s*=\s*["']module["']/.test(html), 'the page loads a module');
+  // Comments stripped first: the page's own comment says what it is, and the check is
+  // about what the page loads, not about what it says about itself.
+  const markup = html.replace(/<!--[\s\S]*?-->/g, '');
+  assert(!/react/i.test(markup), 'the page mentions React');
+
+  for (const reference of localReferences(html)) {
+    const referenced = await fetch(new URL(reference, `${WEB_ORIGIN}/`));
+    assert(referenced.status === 200, `${reference} answered ${referenced.status}`);
+    if (reference.endsWith('.css')) {
+      assert(
+        contentType(referenced).includes('text/css'),
+        `${reference} served as "${contentType(referenced)}", not CSS`,
+      );
+    }
+    if (reference.endsWith('theme-init.js')) {
+      assert(
+        contentType(referenced).includes('javascript'),
+        `${reference} served as "${contentType(referenced)}", not JavaScript`,
+      );
+    }
+  }
+});
+
+await check('design-sample-route', async () => {
+  // This only proves Vite's SPA fallback answers the path. What the page *contains* is
+  // proven by web/src/pages/DesignSystemPage.test.tsx, not here.
+  const response = await fetch(`${WEB_ORIGIN}/_handout/design-system`);
+  assert(response.status === 200, `expected 200, got ${response.status}`);
+  assert(
+    contentType(response).includes('text/html'),
+    `expected HTML, got "${contentType(response)}"`,
+  );
+});
+
 const passed = results.filter((result) => result.ok).length;
 console.log(`smoke: ${passed}/${results.length} checks passed`);
 if (passed !== results.length) process.exit(1);

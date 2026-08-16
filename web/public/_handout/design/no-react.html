@@ -1,0 +1,116 @@
+<!doctype html>
+<!--
+  Not a stray demo. This page is criterion 2 of HAN-23 made checkable: a server-rendered
+  page without React, without a bundler and without a single rebuilt component, looking
+  like the application because it links the same tokens.css and writes the same .ho-*
+  classes. It is the shape the recipient password page (HAN-20) will have.
+
+  It inherits a stored theme too, because that page sits under the instance domain and
+  therefore shares this origin's local storage.
+-->
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Handout — Tokens ohne Framework</title>
+    <link rel="icon" href="/_handout/design/brand/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/_handout/design/tokens.css" />
+    <script src="/_handout/design/theme-init.js"></script>
+  </head>
+  <body>
+    <div class="page">
+      <header class="header">
+        <img src="/_handout/design/brand/wordmark.svg" alt="handout" width="165" height="44" />
+      </header>
+
+      <main class="main">
+        <div class="ho-card">
+          <h1 class="title">Geschützte Veröffentlichung</h1>
+          <p class="body">
+            Diese Seite wird ohne Framework ausgeliefert. Sie bindet dieselbe
+            <span class="ho-mono">tokens.css</span> ein wie die Anwendung und benutzt dieselben
+            Klassen — nachgebaut wird nichts.
+          </p>
+
+          <div class="row">
+            <button type="button" class="ho-btn ho-btn--accent">Öffnen</button>
+            <button type="button" class="ho-btn ho-btn--secondary">Abbrechen</button>
+          </div>
+
+          <div class="ho-field field">
+            <label class="ho-label" for="pw">Passwort</label>
+            <input class="ho-input" id="pw" type="password" value="geheim" />
+            <span class="ho-hint">Passwortmanager funktionieren, Absenden mit Eingabetaste.</span>
+          </div>
+
+          <div class="ho-field field">
+            <label class="ho-label" for="pw-wrong">Passwort</label>
+            <input
+              class="ho-input"
+              id="pw-wrong"
+              type="password"
+              value=""
+              aria-invalid="true"
+              aria-describedby="pw-wrong-error"
+            />
+            <span class="ho-error" id="pw-wrong-error">Passwort stimmt nicht.</span>
+          </div>
+
+          <p class="row">
+            <span class="ho-badge">Veröffentlicht</span>
+            <span class="ho-badge ho-badge--warning">Offen</span>
+          </p>
+
+          <ul class="ho-list list">
+            <li class="ho-list-row">Prototyp Kundenportal</li>
+            <li class="ho-list-row">Schulungsunterlagen Modul 2</li>
+          </ul>
+
+          <p class="ho-mono">handout.example.de/f8k2p9 · 4,2 MB · 118 Dateien</p>
+        </div>
+      </main>
+    </div>
+
+    <!-- The page's own layout, and nothing that belongs to a component. -->
+    <style>
+      .page {
+        max-width: var(--ho-content-max);
+        margin: 0 auto;
+        padding: var(--ho-space-7) var(--ho-space-8) var(--ho-space-12);
+      }
+      .header {
+        padding-bottom: var(--ho-space-7);
+        border-bottom: var(--ho-border-hairline) solid var(--ho-border);
+      }
+      .main {
+        margin-top: var(--ho-space-9);
+      }
+      .title {
+        margin: 0;
+        font-size: var(--ho-text-xl);
+        line-height: var(--ho-leading-xl);
+        font-weight: var(--ho-weight-medium);
+      }
+      .body {
+        max-width: var(--ho-reading-max);
+        color: var(--ho-fg-muted);
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--ho-space-4);
+        margin: var(--ho-space-6) 0;
+      }
+      .field {
+        margin: var(--ho-space-6) 0;
+        max-width: var(--ho-reading-max);
+      }
+      .list {
+        margin: var(--ho-space-6) 0;
+        padding: 0;
+        list-style: none;
+      }
+    </style>
+  </body>
+</html>
