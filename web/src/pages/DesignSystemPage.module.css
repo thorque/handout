@@ -1,0 +1,110 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ho-space-11);
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ho-space-4);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--ho-text-2xl);
+  line-height: var(--ho-leading-2xl);
+  font-weight: var(--ho-weight-medium);
+}
+
+.lead {
+  margin: 0;
+  max-width: var(--ho-reading-max);
+  font-size: var(--ho-text-md);
+  line-height: var(--ho-leading-md);
+  color: var(--ho-fg-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ho-space-6);
+}
+
+.heading {
+  margin: 0;
+  padding-bottom: var(--ho-space-4);
+  border-bottom: var(--ho-border-hairline) solid var(--ho-border);
+  font-size: var(--ho-text-lg);
+  line-height: var(--ho-leading-lg);
+  font-weight: var(--ho-weight-medium);
+}
+
+.body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--ho-space-8);
+}
+
+.state {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ho-space-3);
+}
+
+/* The name of the state, next to the state itself — the page is a reference, so every
+   specimen says what it is. */
+.label {
+  font-family: var(--ho-font-mono);
+  font-size: var(--ho-text-xs);
+  line-height: var(--ho-leading-xs);
+  letter-spacing: var(--ho-tracking-xs);
+  text-transform: uppercase;
+  color: var(--ho-fg-subtle);
+}
+
+.wide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ho-space-6);
+  width: 100%;
+}
+
+.appearance {
+  display: flex;
+  gap: var(--ho-space-2);
+}
+
+.choice {
+  min-height: var(--ho-control);
+  padding: 0 var(--ho-space-5);
+  background: none;
+  color: var(--ho-fg-muted);
+  border: var(--ho-border-hairline) solid var(--ho-border);
+  border-radius: var(--ho-radius-sm);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* The chosen entry is marked by contour and weight, not by colour alone. */
+.choice[aria-checked='true'] {
+  background: var(--ho-surface-sunken);
+  color: var(--ho-fg);
+  border-color: var(--ho-fg);
+  font-weight: var(--ho-weight-medium);
+}
+
+.note {
+  margin: 0;
+  font-size: var(--ho-text-sm);
+  line-height: var(--ho-leading-sm);
+  color: var(--ho-fg-muted);
+}
+
+.cardTitle {
+  margin: 0 0 var(--ho-space-4);
+  font-size: var(--ho-text-md);
+  line-height: var(--ho-leading-md);
+  font-weight: var(--ho-weight-medium);
+}

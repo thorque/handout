@@ -8,7 +8,7 @@ export interface ThemeContextValue {
   preference: ThemePreference;
   /** What is actually on screen right now — for the switcher's own display only. */
   resolved: ResolvedTheme;
-  setPreference(next: ThemePreference): void;
+  setPreference: (next: ThemePreference) => void;
 }
 
 /** The one key in local storage. 'system' is the absence of it, never a stored string. */

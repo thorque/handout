@@ -137,7 +137,7 @@ export function Popover({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        aria-label={triggerContent === undefined ? triggerLabel : undefined}
+        aria-label={triggerLabel}
         className={styles.trigger}
         onClick={() => {
           setOpen((previous) => !previous);

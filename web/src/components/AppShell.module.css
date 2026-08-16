@@ -1,0 +1,22 @@
+.shell {
+  min-height: 100vh;
+  background: var(--ho-bg);
+  color: var(--ho-fg);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ho-space-6);
+  max-width: var(--ho-content-max);
+  margin: 0 auto;
+  padding: var(--ho-space-7) var(--ho-space-8);
+  border-bottom: var(--ho-border-hairline) solid var(--ho-border);
+}
+
+.main {
+  max-width: var(--ho-content-max);
+  margin: 0 auto;
+  padding: var(--ho-space-9) var(--ho-space-8) var(--ho-space-12);
+}
