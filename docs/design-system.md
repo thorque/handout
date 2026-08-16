@@ -25,7 +25,7 @@ filenames intact, so the URL is stable and unhashed in development and in a buil
 
 ## Where it comes from, and what happens to a change
 
-The file is the **frozen 1.0.1 export** of the design project
+The file is the **frozen 1.0.2 export** of the design project
 (`tokens.json` → `$meta.version`), adopted verbatim and then reformatted by Prettier —
 whitespace and hex case only, no value changed. The only deliberate additions are named
 below.
@@ -33,19 +33,21 @@ below.
 **Once this story landed, the repository copy — not the export — is the source of truth.**
 A design change is a new export, never a silent edit on either side.
 
-1.0.1 is such a change and the first one: `--ho-border-strong` was darkened in the design
-system, `#B4AE9E → #868276` in light and `#524E45 → #75716A` in dark, so the border that
-identifies a control reaches the 3:1 the design sets itself. It landed inside this story
-because the deviation was raised here and decided here; the next one gets its own story.
+1.0.1 and 1.0.2 are such changes, and the first ones: `--ho-border-strong` was darkened in
+the design system so the border that identifies a control reaches the 3:1 the design sets
+itself — `#B4AE9E → #868276 → #858175` in light, `#524E45 → #75716A` in dark. They landed
+inside this story because the deviation was raised here and decided here; the next one gets
+its own story.
 
 `tokens.json` was deliberately **not** brought in. With `tokens.css` consumed directly by
 both consumers, a JSON copy would have no consumer and no generator: a second set of values
 that can drift, which is the exact failure this story exists to prevent. Revisit it when
 something actually needs the tokens as data — a Figma sync, a JavaScript theme object.
 
-Three values were added to `tokens.css` because the design draws them but does not name
-them: `--ho-brand-tracking` (-0.02em), `--ho-brand-mark` (32px) and `--ho-popover-width`
-(292px). They are in the token file rather than in the components that need them.
+Four values were added to `tokens.css` because the design draws them but does not name
+them: `--ho-brand-tracking` (-0.02em), `--ho-brand-mark` (32px), `--ho-popover-width`
+(292px) and `--ho-secret-tracking` (0.14em, the spacing of a masked password). They are in
+the token file rather than in the components that need them.
 
 ## The three theme states
 
@@ -166,9 +168,9 @@ the measured value.
 | `--ho-focus` on `--ho-bg`                     | 5.07  | 7.01  | 3.0       |
 | `--ho-focus` on `--ho-surface`                | 5.68  | 6.39  | 3.0       |
 | `--ho-focus` on `--ho-surface-sunken`         | 4.67  | 5.70  | 3.0       |
-| `--ho-border-strong` on `--ho-bg`             | 3.25  | 3.73  | 3.0       |
-| `--ho-border-strong` on `--ho-surface`        | 3.65  | 3.40  | 3.0       |
-| `--ho-border-strong` on `--ho-surface-sunken` | 3.00  | 3.03  | 3.0       |
+| `--ho-border-strong` on `--ho-bg`             | 3.30  | 3.73  | 3.0       |
+| `--ho-border-strong` on `--ho-surface`        | 3.70  | 3.40  | 3.0       |
+| `--ho-border-strong` on `--ho-surface-sunken` | 3.04  | 3.03  | 3.0       |
 
 ### Two documented non-pairs
 
@@ -196,17 +198,18 @@ named `known deviations`, and the gap was raised with two computed candidates. T
 machine-checked record was the point — a value nobody could change without the test saying
 so — and the story stayed green while the decision was open.
 
-The decision was to correct it, and 1.0.1 carries it. The `known deviations` group is gone
+The decision was to correct it, and 1.0.1 carried it. The `known deviations` group is gone
 with the deviation it recorded: an empty fixture kept "for the next case" is a thing to
 misread, and the next case can reintroduce three lines and this paragraph.
 
-One number is worth keeping in view. Light `--ho-border-strong` on `--ho-surface-sunken`
-measures **2.9968**, which is 3.00 as reported and as the export writes it ("3,0:1 auf
-surface-sunken"), but a hair under a bare `>= 3`. `contrast.test.ts` therefore compares
-thresholds against the ratio at the two decimals these numbers are always stated in, and a
-test next to it pins that this rounding rescues **that pair and no other** — so the
-tolerance of 0.005 stays a named fact rather than a general softening. If a strictly greater
-value is wanted, one step darker does it, and that is again a design decision.
+1.0.1 left one number leaning on how it was read: light `--ho-border-strong` on
+`--ho-surface-sunken` measured **2.9968** — 3.00 as reported and as the export wrote it, a
+hair under a bare `>= 3`. For a while the test compared thresholds at the two decimals these
+numbers are stated in, with a second test pinning that the rounding rescued that pair and no
+other. **1.0.2 removed the need**: one hex step darker in light, `#868276 → #858175`,
+invisible to the eye and 3.0379 on the worst surface. The rounding is gone with it, and
+every threshold in this file is compared against the unrounded ratio. A tolerance that has
+to be explained is worth one step of a colour channel.
 
 ## Fonts
 

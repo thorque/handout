@@ -168,41 +168,25 @@ const PAIRS: Pair[] = [
   {
     foreground: '--ho-border-strong',
     background: '--ho-bg',
-    light: 3.25,
+    light: 3.3,
     dark: 3.73,
     threshold: UI,
   },
   {
     foreground: '--ho-border-strong',
     background: '--ho-surface',
-    light: 3.65,
+    light: 3.7,
     dark: 3.4,
     threshold: UI,
   },
   {
     foreground: '--ho-border-strong',
     background: '--ho-surface-sunken',
-    light: 3.0,
+    light: 3.04,
     dark: 3.03,
     threshold: UI,
   },
 ];
-
-/**
- * A contrast ratio is stated and reported to two decimals, everywhere: tokens.json writes
- * "4.5:1", the 1.0.1 token file writes "3,0:1 auf surface-sunken", every checker prints
- * 3.00. The threshold is therefore compared against the ratio at that precision.
- *
- * It matters for exactly one pair, and that is not left to be discovered: light
- * --ho-border-strong on --ho-surface-sunken measures 2.9968, which is 3.00 as reported and
- * as the design states it, but 0.0032 short of a bare `>= 3`. The test below pins that
- * this rounding rescues that one pair and no other, so the tolerance — 0.005, a tenth of
- * the smallest step any of these colours can take — cannot quietly grow to cover a colour
- * that really drifted.
- */
-function reported(ratio: number): number {
-  return Math.round(ratio * 100) / 100;
-}
 
 const tokens = parseTokens();
 
@@ -229,32 +213,11 @@ describe('contrast', () => {
           tokenValue(mode.values, pair.background),
         );
 
-        expect(reported(ratio)).toBeGreaterThanOrEqual(pair.threshold);
+        expect(ratio).toBeGreaterThanOrEqual(pair.threshold);
         expect(ratio).toBeCloseTo(mode.recorded(pair), 1);
       });
     }
   }
-
-  it('leans on reported precision for one pair only, and names it', () => {
-    // Every pair clears its threshold outright, except light --ho-border-strong on
-    // --ho-surface-sunken, which clears it as reported. If a second pair ever needs the
-    // rounding, this fails and says which — the tolerance stays a named fact.
-    const leaning: string[] = [];
-
-    for (const mode of MODES) {
-      for (const pair of PAIRS) {
-        const ratio = contrastRatio(
-          tokenValue(mode.values, pair.foreground),
-          tokenValue(mode.values, pair.background),
-        );
-        if (ratio < pair.threshold) {
-          leaning.push(`${pair.foreground} on ${pair.background}, ${mode.name}`);
-        }
-      }
-    }
-
-    expect(leaning).toEqual(['--ho-border-strong on --ho-surface-sunken, light']);
-  });
 
   it('defines the same values whether dark comes from the system or from a choice', () => {
     // Invisible by eye, because you never see both at once.
