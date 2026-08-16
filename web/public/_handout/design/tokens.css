@@ -56,7 +56,7 @@
     U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
 }
 
-/* Handout — Design Tokens 1.0.0
+/* Handout — Design Tokens 1.0.1
    Hell ist der Standard, dunkel folgt der Systemeinstellung.
    Erzwingen: <html data-theme="light"> oder <html data-theme="dark">. */
 
@@ -65,7 +65,7 @@
   --ho-surface: #faf9f5;
   --ho-surface-sunken: #e7e3d9;
   --ho-border: #d3cec1;
-  --ho-border-strong: #b4ae9e;
+  --ho-border-strong: #868276; /* 3,0:1 auf surface-sunken, der ungünstigsten Fläche */
   --ho-fg: #1c1b18;
   --ho-fg-muted: #5f5b52;
   --ho-fg-subtle: #6e6a60; /* 4,9:1 auf surface — nicht auf surface-sunken (4,2:1) */
@@ -150,7 +150,7 @@
   --ho-z-toast: 200;
 }
 
-/* Added by Handout, not part of the 1.0.0 export: four values the design draws but does
+/* Added by Handout, not part of the export: four values the design draws but does
    not name as tokens — the wordmark's tracking (-0.02em, while xl's own is -0.015em), the
    32 px display mark, the popover's 292 px width, and the tracking of a masked password,
    which the design sets far wider than any text so the dots read as dots. They are here
@@ -169,7 +169,7 @@
     --ho-surface: #201f1c;
     --ho-surface-sunken: #2a2825;
     --ho-border: #383630;
-    --ho-border-strong: #524e45;
+    --ho-border-strong: #75716a;
     --ho-fg: #edeae2;
     --ho-fg-muted: #aba59b;
     --ho-fg-subtle: #928c82;
@@ -199,7 +199,7 @@
   --ho-surface: #201f1c;
   --ho-surface-sunken: #2a2825;
   --ho-border: #383630;
-  --ho-border-strong: #524e45;
+  --ho-border-strong: #75716a;
   --ho-fg: #edeae2;
   --ho-fg-muted: #aba59b;
   --ho-fg-subtle: #928c82;
