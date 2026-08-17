@@ -70,6 +70,11 @@ coding around it.
   documentation, commit messages.
 - Colors, spacing, radii and states come from design tokens. No hard-coded values in
   components.
+- **Use the base components in `web/src/components/`** — look there before writing UI, and
+  extend what is there rather than putting a second one beside it. A new base component
+  needs a reason, not an occasion. The list is in `docs/design-system.md`; a raw `<button>`,
+  `<a href>`, `<input>`, `<select>`, `<textarea>` or `<dialog>` outside that directory fails
+  `web/src/design/component-reuse.test.ts`.
 - Nothing is conveyed by color alone.
 - Unpacking is the security-critical part of the product. Validate every entry path
   against the target directory before writing, reject symlinks and absolute paths, cap

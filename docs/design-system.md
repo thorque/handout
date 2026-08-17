@@ -317,6 +317,59 @@ page will have.
 
 ## The components
 
+These exist. Use them; do not build a second one beside them.
+
+| Component           | For                                                             |
+| ------------------- | --------------------------------------------------------------- |
+| `Button`            | Schaltfläche — accent / secondary / quiet / critical, md and lg |
+| `TextLink`          | the quiet inline action, and the mono address link              |
+| `TextField`         | a field to type into, with hint, error and mono variants        |
+| `PasswordReadout`   | the composed password row: reveal and copy                      |
+| `Switch`            | on/off, with its word                                           |
+| `List` / `ListRow`  | the bordered list and its rows, plain or interactive            |
+| `DropZone`          | Ablegefläche — idle, over, busy, error                          |
+| `StatusBadge`       | Zustand — neutral / warning / error, with a glyph               |
+| `Popover`           | the panel that hangs off a trigger                              |
+| `Hint`              | the line under a control, neutral or error                      |
+| `EmptyState`        | one sentence, one action                                        |
+| `Card`              | the plain surface                                               |
+| `AppShell`          | header with the wordmark, and `<main>`                          |
+| `Wordmark`, `icons` | the brand lockup and the glyphs                                 |
+
+**Look here before writing UI, and extend what is here rather than adding a neighbour.** A
+new base component needs a reason, not an occasion — two buttons in a project is how a
+design system stops being one, and nothing about it looks wrong in any single diff.
+
+`web/src/design/component-reuse.test.ts` enforces the most common way of breaking that: a
+raw `<button>`, `<a href>`, `<input>`, `<select>`, `<textarea>` or `<dialog>` outside
+`web/src/components/` fails, and the failure names the component to use instead.
+
+`<a href>` is on that list because a raw link is not neutral — it comes out actively wrong.
+The base rule `a { color: var(--ho-accent) }` spends the accent that `tokens.json` reserves
+for where something happens, so a plain link in a list claims the attention the acting
+actions are owed; `.ho-link` takes `--ho-link` and reaches the accent only on hover. It
+underlines permanently, where `.ho-link` brings the underline back on hover and focus so
+that dense rows of actions do not draw a meaningless grid. It is as tall as its text, where
+`.ho-touch` gives 30 px at a pointer and 44 px on touch. And a glyph-only link has no name,
+where `TextLink` turns `label` into both `aria-label` and `title`. Underneath all four sits
+the structural point: **`TextLink` is an `<a>` when it navigates and a `<button>` when it
+acts**, and what the check rejects is making that call by hand, one file at a time.
+
+An `<a>` without `href` is not a link but an anchor — not focusable, no link role — and is
+deliberately not counted. An `<a {...props}>` is counted: that is how a link is written when
+its props come from above, and it is how `TextLink` writes its own.
+
+If a component genuinely does not fit, the exception is **named**, not waived: add an entry
+to `RAW_ELEMENT_EXCEPTIONS` in that file with the file, the element, the number of
+occurrences and the reason. There is one today — the sample page's local appearance
+control, which must not become a reusable switcher because the one in the profile menu
+belongs to HAN-26. A test beside it fails when an entry no longer matches what is in the
+file, so the register cannot outlive its reasons.
+
+What neither check sees: a rebuild by other means — a `<div role="button">` with the look
+copied into a CSS module, or a second button component added inside `components/`. The rule
+in `CLAUDE.md` is the guard there; these tests are the tripwire under the easy path.
+
 Every component wraps the `.ho-*` class from `tokens.css` and adds only what the class
 layer has no shape for. That is not a style preference: it is what keeps the React
 application and a server-rendered page looking identical without the page rebuilding
