@@ -4,19 +4,59 @@
   color: var(--ho-fg);
 }
 
+/* The bar spans the viewport, as the design draws it: surface colour and a hairline below.
+   Limiting the bar itself to --ho-content-max would leave the page background standing
+   above the content on a wide screen. */
 .header {
+  background: var(--ho-surface);
+  border-bottom: var(--ho-border-hairline) solid var(--ho-border);
+}
+
+/* The content inside the bar stops where <main> stops.
+
+   The horizontal padding is --ho-space-8 (24 px), not the design's 20 px. In the design the
+   header padding equals the content padding; here <main> already uses 24 px, and matching it
+   is what puts the wordmark exactly over the content edge below — the rule the design is
+   expressing. Copying the 20 px literally would break it by 4 px. */
+.bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--ho-space-6);
   max-width: var(--ho-content-max);
   margin: 0 auto;
-  padding: var(--ho-space-7) var(--ho-space-8);
-  border-bottom: var(--ho-border-hairline) solid var(--ho-border);
+  padding: var(--ho-space-5) var(--ho-space-8);
+}
+
+/* The hit area the design draws around the lockup: the padding is pulled back out again by
+   the negative margin, so the link is easier to hit without moving the wordmark. */
+.home {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--ho-space-2);
+  margin: calc(var(--ho-space-2) * -1);
+  color: var(--ho-fg);
+  text-decoration: none;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ho-space-4);
 }
 
 .main {
   max-width: var(--ho-content-max);
   margin: 0 auto;
   padding: var(--ho-space-9) var(--ho-space-8) var(--ho-space-12);
+}
+
+/* The application's single breakpoint — Wordmark.module.css drops the word from the header
+   lockup at the same width, and the two cannot share it: a custom property is not usable in
+   a media condition, and a module cannot reach into another module's class. Together they
+   keep the action and the profile mark on screen instead of pushing them off the edge. */
+@media (max-width: 30em) {
+  .bar {
+    padding: var(--ho-space-5);
+  }
 }
