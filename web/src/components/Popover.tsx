@@ -1,13 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from 'react';
+import { useEffect, useId, useState, type ReactNode } from 'react';
 import { cx } from './classNames';
+import { useDismissablePanel } from './useDismissablePanel';
 import styles from './Popover.module.css';
 
 export interface PopoverProps {
@@ -21,19 +14,6 @@ export interface PopoverProps {
   children: ReactNode;
 }
 
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
-function focusableIn(panel: HTMLElement): HTMLElement[] {
-  return [...panel.querySelectorAll<HTMLElement>(FOCUSABLE)];
-}
-
-/** Whether a click on this node hands the focus to a control of its own. */
-function isFocusable(target: Node): boolean {
-  const element = target instanceof Element ? target : target.parentElement;
-  return element?.closest(FOCUSABLE) !== null && element !== null;
-}
-
 /** A length the design keeps in a token, read off the element so it stays there. */
 function tokenPixels(element: HTMLElement, name: string): number {
   const raw = getComputedStyle(element).getPropertyValue(name);
@@ -44,17 +24,17 @@ function tokenPixels(element: HTMLElement, name: string): number {
 /**
  * The design's Popover. It hangs off its trigger with `aria-haspopup="dialog"` and
  * `aria-expanded`, and it is closed without changes at any time — through "Schließen",
- * through `Escape`, or by clicking beside it. Losing the focus to `<body>` is the
- * regression this component is written against: "Schließen" and `Escape` always put it
- * back on the trigger, and so does a click that lands on nothing focusable. A click that
- * lands on another control leaves the focus there, where the user just put it.
+ * through `Escape`, or by clicking beside it. Those three close paths, the tab cycle and
+ * what the focus does afterwards live in `useDismissablePanel`, which `AccountMenu` shares;
+ * the rules are written out there.
  *
  * The panel is rendered only while it is open, not hidden with CSS, so a closed popover
  * is out of the tab order and out of the accessibility tree.
  *
  * Direction is measured, never assumed: below the trigger when it fits, otherwise above,
- * and never over the trigger. The tab cycle inside the panel follows from `role="dialog"`
- * and is ours — the design is silent on Tab.
+ * and never over the trigger. That measurement is this component's own — the account menu
+ * hangs off a header at the top of the viewport, where the answer could only ever be
+ * "below".
  */
 export function Popover({
   triggerLabel,
@@ -63,19 +43,15 @@ export function Popover({
   closeLabel = 'Schließen',
   children,
 }: PopoverProps) {
-  const [open, setOpen] = useState(false);
+  const { open, toggle, close, trigger, panel, onPanelKeyDown } = useDismissablePanel<
+    HTMLButtonElement,
+    HTMLDivElement
+  >();
   const [above, setAbove] = useState(false);
-  const trigger = useRef<HTMLButtonElement>(null);
-  const panel = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const headingId = `${panelId}-heading`;
 
-  const close = useCallback((restoreFocus = true) => {
-    setOpen(false);
-    if (restoreFocus) trigger.current?.focus();
-  }, []);
-
-  // Placement and the first focus, both once the panel is in the document and measurable.
+  // Placement, once the panel is in the document and measurable.
   useEffect(() => {
     if (!open) return;
     const element = panel.current;
@@ -86,61 +62,7 @@ export function Popover({
     const rect = anchor.getBoundingClientRect();
     const room = window.innerHeight - rect.bottom - edge;
     setAbove(room < element.offsetHeight && rect.top - edge > room);
-
-    const first = focusableIn(element)[0];
-    if (first === undefined) element.focus();
-    else first.focus();
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-
-    const onPointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (panel.current?.contains(target) === true) return;
-      if (trigger.current?.contains(target) === true) return;
-
-      // Where the focus goes depends on what was clicked. Clicking a control means going
-      // there, and taking that focus back — one microtask after the browser's own default
-      // action, as this used to — would leave a field the user just clicked unusable.
-      // Clicking anywhere else would drop the focus on <body>, and that is the loss the
-      // design guards against: there the trigger gets it back.
-      if (isFocusable(target)) {
-        close(false);
-        return;
-      }
-
-      close();
-      queueMicrotask(() => trigger.current?.focus());
-    };
-
-    document.addEventListener('mousedown', onPointerDown);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-    };
-  }, [open, close]);
-
-  const onPanelKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      close();
-      return;
-    }
-    if (event.key !== 'Tab' || panel.current === null) return;
-
-    const items = focusableIn(panel.current);
-    const first = items[0];
-    const last = items[items.length - 1];
-    if (first === undefined || last === undefined) return;
-
-    if (event.shiftKey && document.activeElement === first) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  };
+  }, [open, panel, trigger]);
 
   const panelClasses = cx(styles.panel, above ? styles.above : styles.below);
 
@@ -154,9 +76,7 @@ export function Popover({
         aria-controls={open ? panelId : undefined}
         aria-label={triggerLabel}
         className="ho-link ho-touch"
-        onClick={() => {
-          setOpen((previous) => !previous);
-        }}
+        onClick={toggle}
       >
         {triggerContent ?? triggerLabel}
       </button>
