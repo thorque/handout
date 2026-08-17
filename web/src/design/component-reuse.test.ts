@@ -87,17 +87,7 @@ interface Exception {
  * the test below fails on an entry that is no longer needed, so the list cannot outlive
  * its reasons.
  */
-const RAW_ELEMENT_EXCEPTIONS: Exception[] = [
-  {
-    file: 'pages/DesignSystemPage.tsx',
-    element: 'button',
-    count: 1,
-    reason:
-      "The sample page's local light/dark/system control. It is deliberately NOT a reusable " +
-      'switcher: the one in the profile menu belongs to HAN-26, and building it here would ' +
-      'hand that story a component it did not design.',
-  },
-];
+const RAW_ELEMENT_EXCEPTIONS: Exception[] = [];
 
 function tsxFilesOutsideComponents(directory: string): string[] {
   const found: string[] = [];
