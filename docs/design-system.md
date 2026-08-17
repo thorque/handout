@@ -359,12 +359,41 @@ An `<a>` without `href` is not a link but an anchor — not focusable, no link r
 deliberately not counted. An `<a {...props}>` is counted: that is how a link is written when
 its props come from above, and it is how `TextLink` writes its own.
 
-If a component genuinely does not fit, the exception is **named**, not waived: add an entry
-to `RAW_ELEMENT_EXCEPTIONS` in that file with the file, the element, the number of
-occurrences and the reason. There is one today — the sample page's local appearance
-control, which must not become a reusable switcher because the one in the profile menu
-belongs to HAN-26. A test beside it fails when an entry no longer matches what is in the
-file, so the register cannot outlive its reasons.
+### When a component is missing
+
+**Ask. Do not decide it alone.** A missing component is a design decision, and the three
+ways out are these, best first:
+
+1. **Thorsten updates the design system.** The normal case. The new component arrives as a
+   new export, and the repository follows it.
+2. **Claude Code updates the design system**, with DesignSync, on design project
+   `973f31d0-9780-4437-9d14-6bea66e7c39f`. Technically possible — and **never unasked**.
+   Tokens 1.0.1 and 1.0.2 were written that way, but only because Thorsten had decided it
+   explicitly. Without that decision, nothing there is changed.
+3. **An exception in the code**, named and not waived: an entry in
+   `RAW_ELEMENT_EXCEPTIONS` in `web/src/design/component-reuse.test.ts` with the file, the
+   element, the number of occurrences and the reason. **The last resort**, for when the raw
+   element really is the right answer — not a way around a missing component. There is one
+   today: the sample page's local appearance control, which must not become a reusable
+   switcher because the one in the profile menu belongs to HAN-26. A test beside it fails
+   when an entry no longer matches what is in the file, so the register cannot outlive its
+   reasons.
+
+The failure message of the check names all three, in this order, because a message that
+offers only the third paves the shortcut the check exists to prevent.
+
+#### The procedure for option 2
+
+1. Read the remote design system first and check that nobody else has changed it. The page
+   is `Handout Designsystem.dc.html`; the token files are `tokens.css` and `tokens.json`.
+2. Write with DesignSync: `finalize_plan`, then `write_files`.
+3. Raise the version **in three places** — `tokens.css`, `tokens.json`, and the visible
+   header of the design system page. The header is the one that gets forgotten.
+4. Update the frozen export under
+   `/home/node/.claude/plans/handout-app/han-23-design-source/`, or the invariant "the
+   repository's tokens are the export" stops holding.
+5. Then follow it in the repository. **The source is the design system, never the other way
+   round** — the repository is never the place a design change starts.
 
 What neither check sees: a rebuild by other means — a `<div role="button">` with the look
 copied into a CSS module, or a second button component added inside `components/`. The rule

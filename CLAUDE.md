@@ -75,6 +75,10 @@ coding around it.
   needs a reason, not an occasion. The list is in `docs/design-system.md`; a raw `<button>`,
   `<a href>`, `<input>`, `<select>`, `<textarea>` or `<dialog>` outside that directory fails
   `web/src/design/component-reuse.test.ts`.
+- **When a component is missing, ask — never decide it alone.** A missing component is a
+  design decision: Thorsten updates the design system, or asks Claude Code to. **The design
+  system is never changed unasked**, and an exception in the code is the last resort, not
+  the first idea. `docs/design-system.md`, "When a component is missing".
 - Nothing is conveyed by color alone.
 - Unpacking is the security-critical part of the product. Validate every entry path
   against the target directory before writing, reject symlinks and absolute paths, cap

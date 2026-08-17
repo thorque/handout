@@ -78,9 +78,14 @@ interface Exception {
 }
 
 /**
- * A register, not a waiver. Every entry names a file, an element and why the component
- * would be wrong there — and the test below fails on an entry that is no longer needed,
- * so the list cannot outlive its reasons.
+ * A register, not a waiver, and the **last** of the three ways out — not the first idea.
+ * An entry belongs here when the raw element is genuinely the right answer, not when a
+ * component is missing: a missing component is a question for Thorsten, never a decision
+ * taken alone. See docs/design-system.md, "When a component is missing".
+ *
+ * Every entry names a file, an element and why the component would be wrong there — and
+ * the test below fails on an entry that is no longer needed, so the list cannot outlive
+ * its reasons.
  */
 const RAW_ELEMENT_EXCEPTIONS: Exception[] = [
   {
@@ -140,6 +145,28 @@ function relative(file: string): string {
   return path.relative(SOURCE_ROOT, file);
 }
 
+/**
+ * What a failure says. Whoever reads it is a later session that does not know the
+ * components — so it names the one to take, and then the three ways out **in order**,
+ * because a message that offers only the exception paves the shortcut this check exists to
+ * prevent.
+ */
+function failure(file: string, element: string): string {
+  return [
+    `${file} uses a raw ${LABEL[element] ?? `<${element}>`}.`,
+    `  ${INSTEAD[element] ?? 'Use a base component.'}`,
+    `  The components are listed in docs/design-system.md.`,
+    `  If none of them fits: ask — do not decide alone. Three ways out, best first:`,
+    `    1. Thorsten updates the design system. The normal case: a missing component is a`,
+    `       design decision, not an implementation detail.`,
+    `    2. Claude Code updates the design system with DesignSync. Possible, but never`,
+    `       unasked — only on an explicit decision by Thorsten.`,
+    `    3. An entry in RAW_ELEMENT_EXCEPTIONS below, with its reason. Last resort, for when`,
+    `       the raw element really is right.`,
+    `  The long form is in docs/design-system.md, "When a component is missing".`,
+  ].join('\n');
+}
+
 function exceptionFor(file: string, element: string): Exception | undefined {
   return RAW_ELEMENT_EXCEPTIONS.find(
     (entry) => entry.file === relative(file) && entry.element === element,
@@ -164,13 +191,7 @@ describe('use the base components', () => {
         const allowed = exceptionFor(file, element)?.count ?? 0;
         if (found <= allowed) continue;
 
-        offences.push(
-          `${relative(file)} uses a raw ${LABEL[element] ?? `<${element}>`}. ` +
-            `${INSTEAD[element] ?? 'Use a base component.'} ` +
-            `The components are listed in docs/design-system.md. If none of them fits, add an ` +
-            `entry to RAW_ELEMENT_EXCEPTIONS in web/src/design/component-reuse.test.ts with ` +
-            `the reason.`,
-        );
+        offences.push(failure(relative(file), element));
       }
 
       expect(offences).toEqual([]);
