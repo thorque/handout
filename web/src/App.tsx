@@ -1,6 +1,24 @@
 import { useEffect, useState } from 'react';
+import { Button } from './components/Button';
+import { PlusIcon } from './components/icons';
 
 type ServiceStatus = 'checking' | 'ok' | 'unreachable';
+
+/**
+ * The start page's primary action, standing in the frame's action slot.
+ *
+ * It carries no behaviour yet: creating a publication is the upload story of epic HAN-2,
+ * and it fills exactly this button. There is deliberately no `onClick` — a no-op would let
+ * the button pretend to work.
+ */
+export function NewHandoutAction() {
+  return (
+    <Button>
+      <PlusIcon />
+      Neues Handout
+    </Button>
+  );
+}
 
 const LABELS: Record<ServiceStatus, string> = {
   checking: 'Service: checking…',
