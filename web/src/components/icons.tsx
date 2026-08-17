@@ -74,6 +74,16 @@ export function CheckIcon() {
   );
 }
 
+/** Neues Handout — the design's plus in front of the primary action of a view. */
+export function PlusIcon() {
+  return (
+    <Glyph>
+      <path d="M8 3.5v9" />
+      <path d="M3.5 8h9" />
+    </Glyph>
+  );
+}
+
 /**
  * Anzeigen — the export's 16 × 11 outline with a 4 px pupil at its centre. Both radii are
  * inset by half the stroke, so the drawn edge sits where the export's border box sits.

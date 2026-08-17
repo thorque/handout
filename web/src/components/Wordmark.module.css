@@ -23,3 +23,27 @@
   font-weight: var(--ho-weight-bold);
   letter-spacing: var(--ho-brand-tracking);
 }
+
+/* The lockup of the application header: the same drawing at 18 px, with the word at body
+   size. The mark reads --ho-brand-mark, so redeclaring it here is what resizes it. */
+.header {
+  --ho-brand-mark: var(--ho-brand-mark-header);
+
+  gap: var(--ho-space-4);
+}
+
+.header .word {
+  font-size: var(--ho-text-base);
+  line-height: var(--ho-leading-base);
+}
+
+/* The application's single breakpoint — AppShell.module.css tightens the header's
+   horizontal padding at the same width, and the two cannot share it: a custom property is
+   not usable in a media condition, and a module cannot reach into another module's class.
+   Only the mark remains below it. The accessible name survives, because it comes from the
+   SVG's <title>, not from the word. */
+@media (max-width: 30em) {
+  .header .word {
+    display: none;
+  }
+}
