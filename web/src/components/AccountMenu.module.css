@@ -1,0 +1,142 @@
+/* The design draws no class for the account menu, so all of it is here — in tokens only. */
+.anchor {
+  position: relative;
+  display: inline-block;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--ho-account-mark);
+  height: var(--ho-account-mark);
+  background: var(--ho-surface-sunken);
+  color: var(--ho-fg-muted);
+  border: var(--ho-border-hairline) solid var(--ho-border-strong);
+  border-radius: var(--ho-radius-sm);
+  /* The shorthand first — it resets font-size, so the size has to follow it, not lead. */
+  font: inherit;
+  font-size: var(--ho-text-xs);
+  font-weight: var(--ho-weight-bold);
+  /* The design sets `letter-spacing: 0.02em` on the initials. It is deliberately left off:
+     the token layer has no such value (--ho-tracking-xs is 0.06em), and two letters do not
+     need tracking. Hard-coding it, or inventing a token for one place, would both be worse
+     than the two pixels it costs. */
+  cursor: pointer;
+}
+
+.trigger:hover {
+  background: var(--ho-border);
+  color: var(--ho-fg);
+}
+
+.panel {
+  position: absolute;
+  right: 0;
+  /* 8 px below the mark, and never over it. The header sits at the top of the viewport, so
+     there is no direction to measure — see the component's doc comment. */
+  top: calc(100% + var(--ho-space-4));
+  z-index: var(--ho-z-dialog);
+  min-width: var(--ho-menu-width);
+  background: var(--ho-surface);
+  border: var(--ho-border-hairline) solid var(--ho-border-strong);
+  border-radius: var(--ho-radius-md);
+  box-shadow: var(--ho-shadow-overlay);
+  text-align: left;
+}
+
+/* Three blocks, each separated by a hairline. The design's 14 px of horizontal padding is
+   rounded onto the scale to 16 px: the scale has no 14, and a calc() reproducing the number
+   would hide that decision instead of taking it. */
+.identity,
+.appearance {
+  padding: var(--ho-space-5) var(--ho-space-6);
+  border-bottom: var(--ho-border-hairline) solid var(--ho-border);
+}
+
+.name {
+  margin: 0;
+  font-size: var(--ho-text-base);
+  line-height: var(--ho-leading-base);
+  color: var(--ho-fg);
+}
+
+.email {
+  margin: 0;
+  font-family: var(--ho-font-mono);
+  font-size: var(--ho-text-xs);
+  line-height: var(--ho-leading-xs);
+  color: var(--ho-fg-muted);
+}
+
+.label {
+  display: block;
+  margin-bottom: var(--ho-space-4);
+  font-size: var(--ho-text-xs);
+  line-height: var(--ho-leading-xs);
+  letter-spacing: var(--ho-tracking-xs);
+  text-transform: uppercase;
+  font-weight: var(--ho-weight-medium);
+  color: var(--ho-fg-subtle);
+}
+
+.choices {
+  display: flex;
+  gap: var(--ho-space-2);
+}
+
+/* The 5 px the design keeps between the check and its word is rounded to 6 px, the same
+   decision as the 14 px above. */
+.choice {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ho-space-3);
+  min-height: var(--ho-control);
+  padding: 0 var(--ho-space-3);
+  background: transparent;
+  color: var(--ho-fg-muted);
+  border: var(--ho-border-hairline) solid var(--ho-border);
+  border-radius: var(--ho-radius-sm);
+  font: inherit;
+  font-size: var(--ho-text-sm);
+  cursor: pointer;
+}
+
+/* The chosen entry is marked by contour and by the check glyph, not by colour alone. */
+.choice[aria-checked='true'] {
+  background: var(--ho-surface-sunken);
+  color: var(--ho-fg);
+  border-color: var(--ho-fg);
+}
+
+.signOut {
+  display: block;
+  width: 100%;
+  min-height: var(--ho-control-touch);
+  padding: 0 var(--ho-space-6);
+  background: transparent;
+  color: var(--ho-fg);
+  border: 0;
+  text-align: left;
+  font: inherit;
+  font-size: var(--ho-text-base);
+  cursor: pointer;
+}
+
+.signOut:hover {
+  background: var(--ho-surface-sunken);
+}
+
+/* The same rule tokens.css applies to .ho-touch and .ho-btn: a finger needs 44 px. */
+@media (pointer: coarse) {
+  .trigger {
+    width: var(--ho-control-touch);
+    height: var(--ho-control-touch);
+  }
+
+  .choice {
+    min-height: var(--ho-control-touch);
+  }
+}

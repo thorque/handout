@@ -44,10 +44,19 @@ both consumers, a JSON copy would have no consumer and no generator: a second se
 that can drift, which is the exact failure this story exists to prevent. Revisit it when
 something actually needs the tokens as data — a Figma sync, a JavaScript theme object.
 
-Four values were added to `tokens.css` because the design draws them but does not name
+Seven values were added to `tokens.css` because the design draws them but does not name
 them: `--ho-brand-tracking` (-0.02em), `--ho-brand-mark` (32px), `--ho-popover-width`
-(292px) and `--ho-secret-tracking` (0.14em, the spacing of a masked password). They are in
-the token file rather than in the components that need them.
+(292px) and `--ho-secret-tracking` (0.14em, the spacing of a masked password), and with the
+application frame `--ho-brand-mark-header` (18px, the header lockup), `--ho-menu-width`
+(232px, the account menu) and `--ho-account-mark` (32px, the profile mark — `--ho-control`
+is 36px and means a control). They are in the token file rather than in the components that
+need them.
+
+Two lengths the account menu draws were **not** added but rounded onto the scale instead:
+its 14 px of horizontal padding becomes `--ho-space-6` (16px) and the 5 px between a check
+glyph and its word becomes `--ho-space-3` (6px). The scale has no 14 and no 5, and a
+`calc()` reproducing the number would hide the decision. Two pixels are invisible; a value
+off the scale is not.
 
 ## The three theme states
 
@@ -255,11 +264,19 @@ would claim a dependency the build does not have.
 There is no logo file in the export — the mark is built from two nested boxes. The geometry,
 as the design draws it at all three sizes:
 
-| Use              | Box     | Border | Radius | Accent square | Offset past bottom-right |
-| ---------------- | ------- | ------ | ------ | ------------- | ------------------------ |
-| Display (header) | 32 × 32 | 2.5 px | 2 px   | 14 × 14       | 7 px right, 7 px bottom  |
-| Favicon 24       | 24 × 24 | 2 px   | 2 px   | 10 × 10       | 5 px right, 5 px bottom  |
-| Favicon 16       | 16 × 16 | 1.5 px | 1 px   | 7 × 7         | 3 px right, 3 px bottom  |
+| Use                | Box     | Border | Radius | Accent square | Offset past bottom-right |
+| ------------------ | ------- | ------ | ------ | ------------- | ------------------------ |
+| Display            | 32 × 32 | 2.5 px | 2 px   | 14 × 14       | 7 px right, 7 px bottom  |
+| Application header | 18 × 18 | 2 px   | —      | 8 × 8         | 4 px right, 4 px bottom  |
+| Favicon 24         | 24 × 24 | 2 px   | 2 px   | 10 × 10       | 5 px right, 5 px bottom  |
+| Favicon 16         | 16 × 16 | 1.5 px | 1 px   | 7 × 7         | 3 px right, 3 px bottom  |
+
+`Wordmark` draws the first two: `size="display"` is the 32 px lockup with the word at
+`--ho-text-xl`, `size="header"` the 18 px one of the application frame with the word at body
+size and weight 700. Both are the one authored SVG, scaled — which costs one accepted
+rounding in the header size: everything scales by 0.75 from the 24 px cell, so the frame
+stroke lands at **1.5 px** where the design draws 2 px there. The stroke is not special-cased
+for it; that would mean a second geometry to keep in step with the first.
 
 The rule behind the three: the accent square is ≈ 0.44 × the box and is centred on the box's
 bottom-right corner. One SVG is authored from the 24 px cell (`viewBox="0 0 29 29"`, frame
@@ -305,12 +322,20 @@ accepted for an internal tool.
 ## The sample page
 
 <http://handout-5173.localhost/_handout/design-system> shows every base component in every
-state, with the state's name next to it, and carries its own light/dark/system control. It
-is what a review by hand is held against, and the reference later UI stories build from.
+state, with the state's name next to it. It is what a review by hand is held against, and
+the reference later UI stories build from.
 
-Its three appearance buttons are deliberately **not** a reusable switcher: the one in the
-profile menu belongs to HAN-26, and building it here would hand that story a component it
-did not design.
+It carried its own light/dark/system control until the application frame arrived. **That
+control is gone**: there is exactly one appearance switcher and it lives in the account
+menu — a second one would change the same theme from two places and show the same state
+twice.
+
+The page has **no "Kontomenü" section either**, and that is a decision, not an omission: the
+page itself stands in `AppShell`, so the header, the profile mark and the live menu are at
+the top of it. A section below would be the same live control a second time, and it would
+undercut the other thing the page shows — its action slot stays **empty**, so the filled and
+the empty case can be held against each other. One sentence in the page's intro points
+upward instead.
 
 `/_handout/design/no-react.html` is the same tokens without React — the shape the password
 page will have.
@@ -319,22 +344,23 @@ page will have.
 
 These exist. Use them; do not build a second one beside them.
 
-| Component           | For                                                             |
-| ------------------- | --------------------------------------------------------------- |
-| `Button`            | Schaltfläche — accent / secondary / quiet / critical, md and lg |
-| `TextLink`          | the quiet inline action, and the mono address link              |
-| `TextField`         | a field to type into, with hint, error and mono variants        |
-| `PasswordReadout`   | the composed password row: reveal and copy                      |
-| `Switch`            | on/off, with its word                                           |
-| `List` / `ListRow`  | the bordered list and its rows, plain or interactive            |
-| `DropZone`          | Ablegefläche — idle, over, busy, error                          |
-| `StatusBadge`       | Zustand — neutral / warning / error, with a glyph               |
-| `Popover`           | the panel that hangs off a trigger                              |
-| `Hint`              | the line under a control, neutral or error                      |
-| `EmptyState`        | one sentence, one action                                        |
-| `Card`              | the plain surface                                               |
-| `AppShell`          | header with the wordmark, and `<main>`                          |
-| `Wordmark`, `icons` | the brand lockup and the glyphs                                 |
+| Component           | For                                                                          |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `Button`            | Schaltfläche — accent / secondary / quiet / critical, md and lg              |
+| `TextLink`          | the quiet inline action, and the mono address link                           |
+| `TextField`         | a field to type into, with hint, error and mono variants                     |
+| `PasswordReadout`   | the composed password row: reveal and copy                                   |
+| `Switch`            | on/off, with its word                                                        |
+| `List` / `ListRow`  | the bordered list and its rows, plain or interactive                         |
+| `DropZone`          | Ablegefläche — idle, over, busy, error                                       |
+| `StatusBadge`       | Zustand — neutral / warning / error, with a glyph                            |
+| `Popover`           | the panel that hangs off a trigger                                           |
+| `AccountMenu`       | the profile mark and the menu behind it: person, appearance, sign-out        |
+| `Hint`              | the line under a control, neutral or error                                   |
+| `EmptyState`        | one sentence, one action                                                     |
+| `Card`              | the plain surface                                                            |
+| `AppShell`          | header with the wordmark, the action slot and the account menu, and `<main>` |
+| `Wordmark`, `icons` | the brand lockup and the glyphs                                              |
 
 **Look here before writing UI, and extend what is here rather than adding a neighbour.** A
 new base component needs a reason, not an occasion — two buttons in a project is how a
@@ -373,11 +399,10 @@ ways out are these, best first:
 3. **An exception in the code**, named and not waived: an entry in
    `RAW_ELEMENT_EXCEPTIONS` in `web/src/design/component-reuse.test.ts` with the file, the
    element, the number of occurrences and the reason. **The last resort**, for when the raw
-   element really is the right answer — not a way around a missing component. There is one
-   today: the sample page's local appearance control, which must not become a reusable
-   switcher because the one in the profile menu belongs to HAN-26. A test beside it fails
-   when an entry no longer matches what is in the file, so the register cannot outlive its
-   reasons.
+   element really is the right answer — not a way around a missing component. The register is
+   empty today: the one entry it held, the sample page's local appearance control, left with
+   that control when the account menu took the switcher over. A test beside it fails when an
+   entry no longer matches what is in the file, so the register cannot outlive its reasons.
 
 The failure message of the check names all three, in this order, because a message that
 offers only the third paves the shortcut the check exists to prevent.
@@ -451,3 +476,49 @@ user just clicked cannot be typed into.
 
 The tab cycle inside the panel is ours: the design is silent on `Tab`, and it follows from
 `role="dialog"`.
+
+## The application frame and the account menu
+
+`AppShell` is the frame every view of the application stands in: a full-bleed bar in
+`--ho-surface` with a hairline below it, the wordmark on the left, and on the right the
+view's primary action and the profile mark. The bar spans the viewport while its content
+stops at `--ho-content-max`, so a wide screen does not show the page background above the
+content. Two deviations from the design, both deliberate:
+
+- **Horizontal padding is 24 px (`--ho-space-8`), not the design's 20 px.** In the design the
+  header padding equals the content padding; here `<main>` already uses 24 px, and matching
+  it is what puts the wordmark exactly over the content edge — the rule the design states.
+- **The wordmark is an `<a href="/">`, where the design draws a button.** "Back to the list"
+  is navigation: it works without a router, survives one, and costs no placeholder callback.
+  A prototype draws a button because it has no URLs. Reversible in one line.
+
+`AccountMenu` is the profile mark and the menu behind it. Four things about it are rules:
+
+- **The closing behaviour is `Popover`'s**, shared through
+  `web/src/components/useDismissablePanel.ts`: `Escape`, a click beside it, the focus back on
+  the trigger unless the click landed on another control, and the tab cycle. The hook was
+  extracted from `Popover` without changing it — `Popover.test.tsx` is untouched and green,
+  which is the proof. What did **not** move is the measured above/below placement: the menu
+  hangs off a header at the top of the viewport, where a measurement could only ever answer
+  "below", and a measurement whose result is known is a claim, not a check.
+- **`role="menu"` holding a `role="radiogroup"` is a known deviation from strict ARIA**,
+  which would want `menuitemradio`. The design draws the radiogroup, and the design is the
+  source of truth, so it is followed and recorded here rather than silently corrected. All
+  three radios stay tab stops; the design is silent on arrow keys.
+- **The chosen appearance carries a check glyph**, not only a colour and a contour — the same
+  rule as every other state in this system.
+- **The mark shows initials from the name, never the address.** `initialsOf` takes the first
+  letters of the first two words; an address on the header is readable over a shoulder, so it
+  stays inside the menu.
+
+**One breakpoint, `30em` (480 px), and it is deliberately duplicated** in two modules:
+`Wordmark.module.css` drops the word from the header lockup, `AppShell.module.css` tightens
+the header's horizontal padding. It cannot be a token — a custom property is not usable in a
+media condition — and it cannot live in one file, because a module cannot reach into another
+module's class. Both rules name the other in a comment.
+
+The frame is **not** on the recipient password page: nobody is signed in there. Today that is
+proven against the React-free stand-in `no-react.html`, in the `design-no-react-page` smoke
+check — the page carries no `aria-haspopup="menu"`, no `role="menu"`, no `radiogroup`, no
+`Erscheinungsbild` and no `Abmelden`. **HAN-20 inherits the obligation** to re-prove it on the
+real password page.

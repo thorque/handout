@@ -62,11 +62,13 @@ describe('DesignSystemPage', () => {
     expect(panel.contains(action)).toBe(true);
   });
 
-  it('carries an appearance control of its own, not the profile menu one', () => {
+  it('leaves the appearance control to the profile menu', () => {
+    // There is exactly one switcher, and it is the one in the account menu. A second one
+    // here would change the same theme from two places and show the same state twice —
+    // and this page already stands in the frame that carries the menu.
     renderPage();
 
-    const group = screen.getByRole('radiogroup', { name: 'Erscheinungsbild' });
-    expect(group).toBeDefined();
-    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    expect(screen.queryByRole('radiogroup')).toBeNull();
+    expect(screen.queryAllByRole('radio')).toHaveLength(0);
   });
 });

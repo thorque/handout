@@ -13,23 +13,18 @@ import { TextField } from '../components/TextField';
 import { TextLink } from '../components/TextLink';
 import { Wordmark } from '../components/Wordmark';
 import { CopyIcon } from '../components/icons';
-import { useTheme, type ThemePreference } from '../theme/useTheme';
 import styles from './DesignSystemPage.module.css';
 
 /**
  * Every base component in every state, so the design can be held against the running
  * application by eye — the half of this story that green tests cannot show.
  *
- * The three appearance buttons below are deliberately NOT a reusable switcher: the one in
- * the profile menu belongs to HAN-26, and building it here would hand that story a
- * component it did not design. They call setPreference directly and live in this file.
+ * The header and the account menu have no section of their own: this page stands in the
+ * frame itself, so both are live above it. A second instance would be the same control
+ * twice — the appearance changeable from two places, the same state shown twice. The
+ * page's action slot stays empty on purpose, so the filled and the empty case can be held
+ * against each other.
  */
-
-const PREFERENCES: { value: ThemePreference; label: string }[] = [
-  { value: 'light', label: 'Hell' },
-  { value: 'dark', label: 'Dunkel' },
-  { value: 'system', label: 'System' },
-];
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -50,7 +45,6 @@ function State({ label, children }: { label: string; children: ReactNode }) {
 }
 
 export function DesignSystemPage() {
-  const { preference, resolved, setPreference } = useTheme();
   const [protectedOn, setProtectedOn] = useState(true);
   const [copied, setCopied] = useState(false);
 
@@ -59,31 +53,11 @@ export function DesignSystemPage() {
       <header className={styles.intro}>
         <h1 className={styles.title}>Designsystem</h1>
         <p className={styles.lead}>
-          Alle Bauteile in allen Zuständen, aus denselben Tokens wie die Anwendung.
+          Alle Bauteile in allen Zuständen, aus denselben Tokens wie die Anwendung. Kopfzeile und
+          Kontomenü stehen oben im Rahmen dieser Seite — dort liegt auch der Umschalter für Hell,
+          Dunkel und System.
         </p>
       </header>
-
-      <Section title="Erscheinungsbild">
-        <div role="radiogroup" aria-label="Erscheinungsbild" className={styles.appearance}>
-          {PREFERENCES.map((entry) => (
-            <button
-              key={entry.value}
-              type="button"
-              role="radio"
-              aria-checked={preference === entry.value}
-              className={styles.choice}
-              onClick={() => {
-                setPreference(entry.value);
-              }}
-            >
-              {entry.label}
-            </button>
-          ))}
-        </div>
-        <p className={styles.note}>
-          Gewählt: {preference} · auf dem Bildschirm: {resolved}
-        </p>
-      </Section>
 
       <Section title="Marke">
         <State label="Wortmarke">

@@ -293,6 +293,26 @@ await check('design-no-react-page', async () => {
     assert(!markup.includes(brandFile), `the page references ${brandFile} instead of inlining it`);
   }
 
+  // Criterion 5 of HAN-26: no application frame on a page for recipients, where nobody is
+  // signed in. What this proves is that the recipient-shaped page carries none of the
+  // account markup; what it does not prove is HAN-20's real password page, which re-proves
+  // it on itself. The page keeps its own plain brand header — a wordmark, no session — and
+  // the application header cannot reach it by construction: it is a React component mounted
+  // at the application root, and this page loads no module at all, which is asserted above.
+  const accountMarkup: [string, string][] = [
+    ['aria-haspopup="menu"', 'the profile mark'],
+    ['role="menu"', 'the account menu'],
+    ['radiogroup', 'the appearance switcher'],
+    ['Erscheinungsbild', 'the appearance switcher'],
+    ['Abmelden', 'the sign-out'],
+  ];
+  for (const [needle, what] of accountMarkup) {
+    assert(
+      !markup.includes(needle),
+      `the recipient page carries ${what} (${needle}) — criterion 5 of HAN-26`,
+    );
+  }
+
   for (const reference of localReferences(html)) {
     const referenced = await fetch(new URL(reference, `${WEB_ORIGIN}/`));
     assert(referenced.status === 200, `${reference} answered ${referenced.status}`);

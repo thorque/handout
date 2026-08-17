@@ -22,6 +22,14 @@ describe('Wordmark', () => {
     expect(words()).toHaveLength(0);
   });
 
+  it('keeps its name in the header size, where the word may drop out', () => {
+    // Below 30em the header lockup hides the word in CSS. What names the mark is the
+    // SVG's <title>, so the name has to survive that — asserted here rather than assumed.
+    render(<Wordmark size="header" />);
+
+    expect(screen.getByRole('img', { name: 'handout' })).toBeDefined();
+  });
+
   it('gives every lockup in a document its own title id', () => {
     // Three of them share the sample page. A constant id would make two of the three
     // point their aria-labelledby at the first one's title.
