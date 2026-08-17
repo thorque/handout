@@ -1,0 +1,30 @@
+<!-- The mark on its own, authored from the design's 24 px cell: a 24-wide frame spanning
+     0…24 and an accent square spanning 19…29, i.e. half of it past the bottom-right
+     corner. Scales to any size.
+
+     The colours are literals with a prefers-color-scheme block of their own, exactly as in
+     favicon.svg and for the same reason: this file is loaded through <img>, which makes it
+     a document of its own — it inherits neither the page's custom properties nor its
+     currentColor. The in-app lockup is web/src/components/Wordmark.tsx, which is inline
+     SVG and does follow the page live. See docs/design-system.md. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" width="29" height="29" role="img" aria-labelledby="handout-mark-title">
+  <title id="handout-mark-title">handout</title>
+  <style>
+    .frame {
+      stroke: #1c1b18;
+    }
+    .accent {
+      fill: #b23a16;
+    }
+    @media (prefers-color-scheme: dark) {
+      .frame {
+        stroke: #edeae2;
+      }
+      .accent {
+        fill: #ff7a4d;
+      }
+    }
+  </style>
+  <rect class="frame" x="1" y="1" width="22" height="22" rx="2" fill="none" stroke-width="2" />
+  <rect class="accent" x="19" y="19" width="10" height="10" />
+</svg>

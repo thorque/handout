@@ -53,7 +53,8 @@ coding around it.
   publication. Redirect with a validated target, return with a short-lived one-time token,
   session scoped to that single publication. Never a cookie on the parent domain.
 - **Design tokens must work without React**, because the password page is server-rendered
-  and needs the same look as the app.
+  and needs the same look as the app. One file at `/_handout/design/tokens.css` for both
+  consumers; see `docs/design-system.md`.
 - **One identity provider per instance.** No provider picker, no provider-specific code
   paths — issuer URL, client ID and secret are the whole configuration.
 - **Never touch the delivered artifact.** Absolute paths in path mode produce a warning at
@@ -69,6 +70,15 @@ coding around it.
   documentation, commit messages.
 - Colors, spacing, radii and states come from design tokens. No hard-coded values in
   components.
+- **Use the base components in `web/src/components/`** — look there before writing UI, and
+  extend what is there rather than putting a second one beside it. A new base component
+  needs a reason, not an occasion. The list is in `docs/design-system.md`; a raw `<button>`,
+  `<a href>`, `<input>`, `<select>`, `<textarea>` or `<dialog>` outside that directory fails
+  `web/src/design/component-reuse.test.ts`.
+- **When a component is missing, ask — never decide it alone.** A missing component is a
+  design decision: Thorsten updates the design system, or asks Claude Code to. **The design
+  system is never changed unasked**, and an exception in the code is the last resort, not
+  the first idea. `docs/design-system.md`, "When a component is missing".
 - Nothing is conveyed by color alone.
 - Unpacking is the security-critical part of the product. Validate every entry path
   against the target directory before writing, reject symlinks and absolute paths, cap

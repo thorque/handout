@@ -1,0 +1,6 @@
+/* Sized in em so a glyph follows the text it stands next to, in every size the design has. */
+.icon {
+  width: 1em;
+  height: 1em;
+  flex: none;
+}

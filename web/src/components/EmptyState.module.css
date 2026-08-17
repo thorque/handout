@@ -1,0 +1,19 @@
+/* The design draws no class for this one: a dashed hairline on the page surface, so it
+   reads as a place where something is missing rather than as a card that is empty. */
+.empty {
+  padding: var(--ho-space-10) var(--ho-space-8);
+  background: var(--ho-bg);
+  border: var(--ho-border-hairline) dashed var(--ho-border-strong);
+  border-radius: var(--ho-radius-md);
+  text-align: center;
+}
+
+.sentence {
+  margin: 0;
+  font-size: var(--ho-text-md);
+  line-height: var(--ho-leading-md);
+}
+
+.action {
+  margin-top: var(--ho-space-6);
+}

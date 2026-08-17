@@ -1,0 +1,43 @@
+/* .ho-list and .ho-list-row carry contour, surface and hairlines. What is added here is
+   only what a <ul> needs to stop looking like a <ul>, and the interactive row's own box. */
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* The export's row is a wrapping flex line with 12 px between its columns. A row that
+   takes several children and gives them no rhythm would put them on top of each other,
+   which is the same defect the popover had. */
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--ho-space-5);
+}
+
+.row:hover {
+  background: var(--ho-surface-sunken);
+}
+
+.action {
+  display: flex;
+  align-items: center;
+  gap: var(--ho-space-5);
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* The underline of the row's own action. Its offset is the browser's, not a copy of the
+   one .ho-link:hover carries — a value restated here would be exactly the drift this
+   design system is set up against. */
+.action:hover {
+  text-decoration: underline;
+}

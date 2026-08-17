@@ -1,0 +1,13 @@
+/* .ho-badge carries the shape; the weight and the error variant are added here. The
+   weight sits on every variant, so "Geschützt" and "Offen" differ in glyph and colour
+   only — never in how heavy they look. */
+.badge {
+  font-weight: var(--ho-weight-medium);
+  white-space: nowrap;
+}
+
+.error {
+  background: var(--ho-error-quiet);
+  color: var(--ho-error);
+  border-color: currentColor;
+}

@@ -1,0 +1,6 @@
+/* .ho-error carries size and colour; the glyph next to the text is what is added here. */
+.error {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ho-space-3);
+}

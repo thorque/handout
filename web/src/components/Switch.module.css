@@ -1,0 +1,59 @@
+/* The design draws no .ho-switch class, so the whole control is here — in tokens only. */
+.control {
+  display: flex;
+  align-items: center;
+  gap: var(--ho-space-5);
+  min-height: var(--ho-control-touch);
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--ho-fg);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.control:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.track {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  flex: none;
+  width: var(--ho-space-10);
+  height: var(--ho-space-8);
+  padding: var(--ho-space-1);
+  background: var(--ho-surface-sunken);
+  border: var(--ho-border-hairline) solid var(--ho-border-strong);
+  border-radius: var(--ho-radius-sm);
+  transition: background var(--ho-motion-fast) var(--ho-easing);
+}
+
+.on {
+  justify-content: flex-end;
+  background: var(--ho-accent);
+  border-color: var(--ho-accent-hover);
+}
+
+/* The one place --ho-radius-pill belongs, per the design's own note on the token. */
+.knob {
+  width: var(--ho-space-6);
+  height: var(--ho-space-6);
+  background: var(--ho-surface);
+  border-radius: var(--ho-radius-pill);
+}
+
+.on .knob {
+  background: var(--ho-accent-fg);
+}
+
+.state {
+  display: block;
+  font-size: var(--ho-text-sm);
+  line-height: var(--ho-leading-sm);
+  color: var(--ho-fg-muted);
+}

@@ -1,0 +1,29 @@
+<!-- The favicon is one fixed file while the application has two themes, so the theme
+     switch happens inside the file: light is the default, a prefers-color-scheme block
+     overrides it. Chrome and Firefox honour that for SVG favicons.
+     The four colour literals are copied from tokens.css and are the one sanctioned
+     duplication of token values in this repository — an SVG file cannot read the page's
+     custom properties. See docs/design-system.md.
+     No .ico ships alongside: it could not be generated and verified in this container,
+     so older Safari shows no icon. Accepted for an internal tool. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 29 29" width="29" height="29" role="img" aria-labelledby="handout-favicon-title">
+  <title id="handout-favicon-title">handout</title>
+  <style>
+    .frame {
+      stroke: #1c1b18;
+    }
+    .accent {
+      fill: #b23a16;
+    }
+    @media (prefers-color-scheme: dark) {
+      .frame {
+        stroke: #edeae2;
+      }
+      .accent {
+        fill: #ff7a4d;
+      }
+    }
+  </style>
+  <rect class="frame" x="1" y="1" width="22" height="22" rx="2" fill="none" stroke-width="2" />
+  <rect class="accent" x="19" y="19" width="10" height="10" />
+</svg>

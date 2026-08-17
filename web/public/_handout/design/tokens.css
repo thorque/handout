@@ -1,0 +1,427 @@
+/* The two families the design system names, served by us and never by a third party —
+   a recipient opening a published page must not be tracked by a font CDN. The files are
+   copied from the @fontsource packages (OFL-1.1, licences next to them); the blocks are
+   hand-written so the URLs stay absolute, unhashed and nameable from a page without a
+   bundler. Weights are exactly the design's: Public Sans 400/500/700, IBM Plex Mono
+   400/500. Subset `latin` only — German needs nothing beyond it.
+   See docs/design-system.md for the re-copy commands. */
+@font-face {
+  font-family: 'Public Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/_handout/design/fonts/public-sans-latin-400-normal.woff2') format('woff2');
+  unicode-range:
+    U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329,
+    U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
+}
+@font-face {
+  font-family: 'Public Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/_handout/design/fonts/public-sans-latin-500-normal.woff2') format('woff2');
+  unicode-range:
+    U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329,
+    U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
+}
+@font-face {
+  font-family: 'Public Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/_handout/design/fonts/public-sans-latin-700-normal.woff2') format('woff2');
+  unicode-range:
+    U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329,
+    U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/_handout/design/fonts/ibm-plex-mono-latin-400-normal.woff2') format('woff2');
+  unicode-range:
+    U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329,
+    U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/_handout/design/fonts/ibm-plex-mono-latin-500-normal.woff2') format('woff2');
+  unicode-range:
+    U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329,
+    U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
+}
+
+/* Handout — Design Tokens 1.0.2
+   Hell ist der Standard, dunkel folgt der Systemeinstellung.
+   Erzwingen: <html data-theme="light"> oder <html data-theme="dark">. */
+
+:root {
+  --ho-bg: #efece4;
+  --ho-surface: #faf9f5;
+  --ho-surface-sunken: #e7e3d9;
+  --ho-border: #d3cec1;
+  --ho-border-strong: #858175; /* 3,0:1 auf surface-sunken, der ungünstigsten Fläche */
+  --ho-fg: #1c1b18;
+  --ho-fg-muted: #5f5b52;
+  --ho-fg-subtle: #6e6a60; /* 4,9:1 auf surface — nicht auf surface-sunken (4,2:1) */
+  --ho-accent: #b23a16;
+  --ho-accent-hover: #93300f;
+  --ho-accent-fg: #ffffff;
+  --ho-accent-quiet: #f6e4dc;
+  --ho-critical: #1c1b18;
+  --ho-critical-fg: #faf9f5;
+  --ho-success: #2e6b4f;
+  --ho-success-quiet: #dee9e1;
+  --ho-warning: #6f5310;
+  --ho-warning-quiet: #f1e7cd;
+  --ho-error: #8c2f13;
+  --ho-error-quiet: #f6e4dc;
+  --ho-focus: #b23a16;
+  --ho-overlay: rgba(28, 27, 24, 0.34);
+  --ho-link: #5f5b52;
+  --ho-link-hover: #b23a16;
+
+  --ho-font-sans: 'Public Sans', system-ui, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --ho-font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ho-weight-regular: 400;
+  --ho-weight-medium: 500;
+  --ho-weight-bold: 700;
+
+  --ho-text-xs: 12px;
+  --ho-leading-xs: 16px;
+  --ho-tracking-xs: 0.06em;
+  --ho-text-sm: 13px;
+  --ho-leading-sm: 18px;
+  --ho-text-base: 15px;
+  --ho-leading-base: 22px;
+  --ho-text-md: 17px;
+  --ho-leading-md: 24px;
+  --ho-text-lg: 20px;
+  --ho-leading-lg: 26px;
+  --ho-text-xl: 26px;
+  --ho-leading-xl: 32px;
+  --ho-text-2xl: 34px;
+  --ho-leading-2xl: 40px;
+
+  --ho-space-1: 2px;
+  --ho-space-2: 4px;
+  --ho-space-3: 6px;
+  --ho-space-4: 8px;
+  --ho-space-5: 12px;
+  --ho-space-6: 16px;
+  --ho-space-7: 20px;
+  --ho-space-8: 24px;
+  --ho-space-9: 32px;
+  --ho-space-10: 40px;
+  --ho-space-11: 56px;
+  --ho-space-12: 72px;
+
+  --ho-radius-none: 0px;
+  --ho-radius-sm: 2px;
+  --ho-radius-md: 3px;
+  --ho-radius-pill: 999px;
+
+  --ho-border-hairline: 1px;
+  --ho-border-drop: 2px;
+  --ho-focus-width: 2px;
+  --ho-focus-offset: 2px;
+
+  --ho-shadow-none: none;
+  --ho-shadow-raise: 0 1px 0 rgba(28, 27, 24, 0.06);
+  --ho-shadow-overlay: 0 8px 24px -10px rgba(28, 27, 24, 0.32);
+
+  --ho-control: 36px;
+  --ho-control-touch: 44px;
+  --ho-control-lg: 48px;
+  --ho-content-max: 1080px;
+  --ho-reading-max: 42ch;
+
+  --ho-motion-fast: 120ms;
+  --ho-motion-base: 180ms;
+  --ho-easing: cubic-bezier(0.2, 0, 0.2, 1);
+
+  --ho-z-sticky: 10;
+  --ho-z-dialog: 100;
+  --ho-z-toast: 200;
+}
+
+/* Added by Handout, not part of the export: four values the design draws but does
+   not name as tokens — the wordmark's tracking (-0.02em, while xl's own is -0.015em), the
+   32 px display mark, the popover's 292 px width, and the tracking of a masked password,
+   which the design sets far wider than any text so the dots read as dots. They are here
+   rather than in a component so no component has to hard-code them. Mode-independent,
+   hence only in :root. */
+:root {
+  --ho-brand-tracking: -0.02em;
+  --ho-brand-mark: 32px;
+  --ho-popover-width: 292px;
+  --ho-secret-tracking: 0.14em;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --ho-bg: #171614;
+    --ho-surface: #201f1c;
+    --ho-surface-sunken: #2a2825;
+    --ho-border: #383630;
+    --ho-border-strong: #75716a;
+    --ho-fg: #edeae2;
+    --ho-fg-muted: #aba59b;
+    --ho-fg-subtle: #928c82;
+    --ho-accent: #ff7a4d;
+    --ho-accent-hover: #ff9670;
+    --ho-accent-fg: #1a1411;
+    --ho-accent-quiet: #35231b;
+    --ho-critical: #edeae2;
+    --ho-critical-fg: #171614;
+    --ho-success: #79be99;
+    --ho-success-quiet: #1e2c25;
+    --ho-warning: #d7b461;
+    --ho-warning-quiet: #2e2718;
+    --ho-error: #f0876a;
+    --ho-error-quiet: #33211b;
+    --ho-focus: #ff7a4d;
+    --ho-overlay: rgba(0, 0, 0, 0.55);
+    --ho-link: #aba59b;
+    --ho-link-hover: #ff7a4d;
+    --ho-shadow-raise: 0 1px 0 rgba(0, 0, 0, 0.3);
+    --ho-shadow-overlay: 0 8px 24px -10px rgba(0, 0, 0, 0.6);
+  }
+}
+
+[data-theme='dark'] {
+  --ho-bg: #171614;
+  --ho-surface: #201f1c;
+  --ho-surface-sunken: #2a2825;
+  --ho-border: #383630;
+  --ho-border-strong: #75716a;
+  --ho-fg: #edeae2;
+  --ho-fg-muted: #aba59b;
+  --ho-fg-subtle: #928c82;
+  --ho-accent: #ff7a4d;
+  --ho-accent-hover: #ff9670;
+  --ho-accent-fg: #1a1411;
+  --ho-accent-quiet: #35231b;
+  --ho-critical: #edeae2;
+  --ho-critical-fg: #171614;
+  --ho-success: #79be99;
+  --ho-success-quiet: #1e2c25;
+  --ho-warning: #d7b461;
+  --ho-warning-quiet: #2e2718;
+  --ho-error: #f0876a;
+  --ho-error-quiet: #33211b;
+  --ho-focus: #ff7a4d;
+  --ho-overlay: rgba(0, 0, 0, 0.55);
+  --ho-link: #aba59b;
+  --ho-link-hover: #ff7a4d;
+  --ho-shadow-raise: 0 1px 0 rgba(0, 0, 0, 0.3);
+  --ho-shadow-overlay: 0 8px 24px -10px rgba(0, 0, 0, 0.6);
+}
+
+/* Basis */
+body {
+  margin: 0;
+  background: var(--ho-bg);
+  color: var(--ho-fg);
+  font-family: var(--ho-font-sans);
+  font-size: var(--ho-text-base);
+  line-height: var(--ho-leading-base);
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: var(--ho-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+a:hover {
+  color: var(--ho-accent-hover);
+}
+:focus-visible {
+  outline: var(--ho-focus-width) solid var(--ho-focus);
+  outline-offset: var(--ho-focus-offset);
+}
+
+/* Komponenten (Kurzreferenz für die Umsetzung) */
+.ho-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ho-space-4);
+  min-height: var(--ho-control);
+  padding: 0 var(--ho-space-6);
+  border: var(--ho-border-hairline) solid transparent;
+  border-radius: var(--ho-radius-md);
+  font: var(--ho-weight-medium) var(--ho-text-base) / 1 var(--ho-font-sans);
+  cursor: pointer;
+  transition: background var(--ho-motion-fast) var(--ho-easing);
+}
+@media (pointer: coarse) {
+  .ho-btn {
+    min-height: var(--ho-control-touch);
+  }
+}
+.ho-btn--accent {
+  background: var(--ho-accent);
+  color: var(--ho-accent-fg);
+}
+.ho-btn--accent:hover {
+  background: var(--ho-accent-hover);
+}
+.ho-btn--secondary {
+  background: var(--ho-surface);
+  color: var(--ho-fg);
+  border-color: var(--ho-border-strong);
+}
+.ho-btn--quiet {
+  background: transparent;
+  color: var(--ho-fg-muted);
+  padding: 0 var(--ho-space-5);
+}
+.ho-btn--quiet:hover {
+  color: var(--ho-fg);
+  background: var(--ho-surface-sunken);
+}
+.ho-btn--critical {
+  background: var(--ho-critical);
+  color: var(--ho-critical-fg);
+}
+.ho-btn[disabled] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Textlink — die stille Aktion. Unterstreichung erst bei Hover und Fokus,
+   damit dicht gesetzte Listen nicht in Linien ertrinken. */
+.ho-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ho-space-3);
+  padding: 0;
+  background: none;
+  border: 0;
+  color: var(--ho-link);
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ho-link:hover {
+  color: var(--ho-link-hover);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.ho-link--strong {
+  color: var(--ho-fg);
+}
+.ho-link--mono {
+  font-family: var(--ho-font-mono);
+  font-size: var(--ho-text-sm);
+}
+/* Tastfläche: kompakt am Zeigergerät, 44 px auf Berührung */
+.ho-touch {
+  min-height: 30px;
+}
+@media (pointer: coarse) {
+  .ho-touch {
+    min-height: var(--ho-control-touch);
+  }
+}
+
+.ho-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ho-space-3);
+}
+.ho-label {
+  font-size: var(--ho-text-sm);
+  color: var(--ho-fg-subtle);
+}
+.ho-input {
+  min-height: var(--ho-control);
+  padding: 0 var(--ho-space-5);
+  background: var(--ho-surface);
+  color: var(--ho-fg);
+  border: var(--ho-border-hairline) solid var(--ho-border-strong);
+  border-radius: var(--ho-radius-sm);
+  font: var(--ho-weight-regular) var(--ho-text-base) / 1 var(--ho-font-sans);
+}
+.ho-input[aria-invalid='true'] {
+  border-color: var(--ho-error);
+  border-width: 2px;
+}
+.ho-hint {
+  font-size: var(--ho-text-sm);
+  color: var(--ho-fg-muted);
+}
+.ho-error {
+  font-size: var(--ho-text-sm);
+  color: var(--ho-error);
+}
+
+.ho-card {
+  background: var(--ho-surface);
+  border: var(--ho-border-hairline) solid var(--ho-border);
+  border-radius: var(--ho-radius-md);
+  padding: var(--ho-space-8);
+}
+.ho-list {
+  border: var(--ho-border-hairline) solid var(--ho-border);
+  border-radius: var(--ho-radius-md);
+  overflow: hidden;
+}
+.ho-list-row {
+  background: var(--ho-surface);
+  padding: var(--ho-space-6);
+  border-top: var(--ho-border-hairline) solid var(--ho-border);
+}
+.ho-list-row:first-child {
+  border-top: 0;
+}
+
+.ho-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ho-space-3);
+  padding: 2px var(--ho-space-4);
+  border-radius: var(--ho-radius-sm);
+  font-size: var(--ho-text-xs);
+  letter-spacing: 0.02em;
+  background: var(--ho-surface-sunken);
+  color: var(--ho-fg-muted);
+  border: var(--ho-border-hairline) solid var(--ho-border);
+}
+.ho-badge--protected {
+  background: var(--ho-success-quiet);
+  color: var(--ho-success);
+  border-color: currentColor;
+}
+.ho-badge--warning {
+  background: var(--ho-warning-quiet);
+  color: var(--ho-warning);
+  border-color: currentColor;
+}
+
+.ho-drop {
+  border: var(--ho-border-drop) dashed var(--ho-border-strong);
+  border-radius: var(--ho-radius-md);
+  background: var(--ho-surface-sunken);
+  padding: var(--ho-space-11) var(--ho-space-8);
+  transition:
+    background var(--ho-motion-base) var(--ho-easing),
+    border-color var(--ho-motion-base) var(--ho-easing);
+}
+.ho-drop[data-state='over'] {
+  border-color: var(--ho-accent);
+  background: var(--ho-accent-quiet);
+}
+
+.ho-mono {
+  font-family: var(--ho-font-mono);
+  font-size: var(--ho-text-sm);
+}

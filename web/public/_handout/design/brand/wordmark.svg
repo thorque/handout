@@ -1,0 +1,40 @@
+<!-- Mark plus word, at the display size the design draws: a 32 px mark, 24 px gap, and
+     "handout" at 26/32, weight 700, tracking -0.02em (= -0.52 px at 26 px). Standalone
+     file for documentation and for anything referencing the logo by URL.
+
+     The colours are literals with a prefers-color-scheme block of their own, exactly as in
+     favicon.svg and for the same reason: this file is loaded through <img>, which makes it
+     a document of its own — it inherits neither the page's custom properties nor its
+     currentColor. Without the block the mark would stand near-black on the dark page.
+     The in-app lockup is web/src/components/Wordmark.tsx, which is inline SVG and does
+     follow the page live. See docs/design-system.md. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 165 44" width="165" height="44" role="img" aria-labelledby="handout-wordmark-title">
+  <title id="handout-wordmark-title">handout</title>
+  <style>
+    .frame {
+      stroke: #1c1b18;
+    }
+    .word {
+      fill: #1c1b18;
+    }
+    .accent {
+      fill: #b23a16;
+    }
+    @media (prefers-color-scheme: dark) {
+      .frame {
+        stroke: #edeae2;
+      }
+      .word {
+        fill: #edeae2;
+      }
+      .accent {
+        fill: #ff7a4d;
+      }
+    }
+  </style>
+  <g transform="translate(0 2) scale(1.3333)">
+    <rect class="frame" x="1" y="1" width="22" height="22" rx="2" fill="none" stroke-width="2" />
+    <rect class="accent" x="19" y="19" width="10" height="10" />
+  </g>
+  <text class="word" x="56" y="27" font-family="'Public Sans', system-ui, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="26" font-weight="700" letter-spacing="-0.52">handout</text>
+</svg>

@@ -1,0 +1,5 @@
+/* .ho-field, .ho-label, .ho-input and .ho-hint carry the look. The field only claims the
+   width of its container here, which the class layer deliberately leaves open. */
+.field {
+  min-width: 0;
+}

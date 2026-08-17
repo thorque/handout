@@ -84,6 +84,7 @@ service/          the HTTP service (Fastify)
   test/           integration tests, driven through Fastify's app.inject()
 web/              the publisher front end (React, Vite)
   src/            components and their tests
+  public/_handout/design/   tokens.css, fonts, brand assets — served verbatim
 scripts/smoke.ts  the end-to-end check behind `npm run smoke`
 docs/             decisions that outlive a single story
 ```
@@ -109,6 +110,10 @@ docs/             decisions that outlive a single story
 - **The application owns the `/_handout/` path namespace**, everything else at the root is
   publication space. Read [`docs/url-namespace.md`](docs/url-namespace.md) before adding a
   route.
+- **Colours, spacings, radii and states come from design tokens**, from the one
+  `tokens.css` both the application and a page without React link.
+  [`docs/design-system.md`](docs/design-system.md) has the theme resolution, the token-only
+  rule and the contrast table, each with the test that enforces it.
 - **Direct SQL, no ORM**, and only through the access layer in `service/src/publications/`.
   [`docs/database.md`](docs/database.md) has the schema and the two invariants it protects:
   the address part of a publication never changes, and an address is never reissued.

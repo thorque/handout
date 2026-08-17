@@ -1,0 +1,70 @@
+/* The design draws no class for the popover, so all of it is here — in tokens only.
+   --ho-popover-edge is the distance the panel keeps from the edge of the viewport; it is
+   declared here so the placement code can read it off the element instead of repeating
+   the number in JavaScript. */
+.anchor {
+  position: relative;
+  display: inline-block;
+}
+
+.panel {
+  --ho-popover-edge: var(--ho-space-5);
+
+  position: absolute;
+  left: 0;
+  z-index: var(--ho-z-dialog);
+  width: var(--ho-popover-width);
+  padding: var(--ho-space-6);
+  background: var(--ho-surface);
+  border: var(--ho-border-hairline) solid var(--ho-border-strong);
+  border-radius: var(--ho-radius-md);
+  box-shadow: var(--ho-shadow-overlay);
+  text-align: left;
+}
+
+/* 8 px from the trigger, and never over it — the offset is what guarantees the second. */
+.below {
+  top: calc(100% + var(--ho-space-4));
+}
+
+.above {
+  bottom: calc(100% + var(--ho-space-4));
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ho-space-5);
+}
+
+/* The panel is a plain block stack, built the way the export builds it: every piece
+   carries its own distance to the one above. 12 px from the head to the first, 8 px
+   between the rest.
+
+   Margins rather than `gap`, for two reasons the export makes plain. A composition that
+   needs a caesura — the export draws a hairline before "Neues Passwort erzeugen", with
+   16 px above it and 12 px below — can state its own margin-top, while a gap cannot be
+   cancelled and would add to it. And block flow gives each piece the width it should
+   have: a field fills the panel because .ho-field is a block-level flex container, a
+   button keeps its natural width because it is inline-flex. A flex column with
+   align-items would have to decide that centrally, and would decide it wrong for one of
+   the two. */
+.content {
+  margin-top: var(--ho-space-5);
+}
+
+/* :where() so this default carries no specificity at all: any piece that states its own
+   distance — the caesura below, for one — wins over it regardless of which stylesheet the
+   bundler happens to emit first. A default that depends on file order is not a default. */
+:where(.content) > * + * {
+  margin-top: var(--ho-space-4);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--ho-text-md);
+  line-height: var(--ho-leading-md);
+  font-weight: var(--ho-weight-medium);
+  min-width: 0;
+}
