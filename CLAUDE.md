@@ -7,21 +7,13 @@ account, no installation, no consent banner.
 Handout serves what it is given. It never builds, bundles, edits or rewrites an artifact,
 and it runs no server-side logic on behalf of published content.
 
-## Source of truth
+## Where the decisions are
 
-Product and technical decisions live in Confluence, the work in Jira project `HAN`. Read
-the page belonging to a story before implementing it — the reasoning behind the rules
-below is there, and it matters more than the rules themselves.
-
-- Brief — <https://conciso.atlassian.net/wiki/spaces/EE/pages/4683890693>
-- Technical Brief — <https://conciso.atlassian.net/wiki/spaces/EE/pages/4684578875>
-- Design Brief — <https://conciso.atlassian.net/wiki/spaces/EE/pages/4684316710>
-- Personas: Thomas (publishes, 4684480514), Katrin (receives, 4684316676)
-- Journeys 1–3 under 4684415010
-- Design system and prototype — <https://claude.ai/design/p/973f31d0-9780-4437-9d14-6bea66e7c39f>
-
-If the code and Confluence disagree, Confluence wins. Raise the mismatch instead of
-coding around it.
+The reasoning behind the rules below is written down, not folded into the code: product
+decisions and architecture decision records live in the team's wiki, the work in its issue
+tracker. Neither is public, so this file carries the decisions themselves rather than links
+to them — that is what "Decisions that are easy to get wrong" below is for. Read it before
+changing anything it touches.
 
 ## Architecture
 
