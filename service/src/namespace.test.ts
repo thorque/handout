@@ -9,7 +9,7 @@ describe('isReservedPath', () => {
       '/_handout/api/health',
       '/_handout/design/tokens.css',
     ]) {
-      expect(isReservedPath(pathname), pathname).toBe(true);
+      expect(isReservedPath(pathname), `expected true for "${pathname}"`).toBe(true);
     }
   });
 
@@ -23,7 +23,7 @@ describe('isReservedPath', () => {
       '/x/_handout/y',
       '/abcdefgh',
     ]) {
-      expect(isReservedPath(pathname), pathname).toBe(false);
+      expect(isReservedPath(pathname), `expected false for "${pathname}"`).toBe(false);
     }
   });
 });

@@ -37,7 +37,7 @@ describe('addressFromPath', () => {
 
   it('gives undefined for anything that is not a valid address', () => {
     for (const pathname of ['/', '/nope', '/_handout', '/ABCDEFGH', '/abcdefghi']) {
-      expect(addressFromPath(pathname), pathname).toBeUndefined();
+      expect(addressFromPath(pathname), `expected undefined for "${pathname}"`).toBeUndefined();
     }
   });
 });

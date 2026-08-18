@@ -1,7 +1,11 @@
+import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { Config } from './config';
-import { API_PREFIX } from './namespace';
+import { API_PREFIX, isReservedPath } from './namespace';
+import { sendNotFoundPage } from './routes/not-found';
 import { healthRoutes } from './routes/health';
+import { publicationRoutes } from './routes/publications';
+import { ensureHandoutsDir } from './publications/storage';
 
 export interface AppDeps {
   /** Whether the database answers *and* carries the schema. */
@@ -13,6 +17,26 @@ export function buildApp(config: Config, deps: AppDeps): FastifyInstance {
   const app = Fastify({ logger: { level: config.logLevel } });
 
   app.register(healthRoutes, { prefix: API_PREFIX, checkDatabase: deps.checkDatabase });
+
+  // The service cannot serve without this directory, so it is created before the
+  // delivery route is registered rather than lazily on the first request.
+  const handoutsDir = ensureHandoutsDir(config);
+
+  // serve: false adds no route of its own; it only decorates the reply with sendFile,
+  // which publicationRoutes calls once it has resolved and contained the path itself.
+  app.register(fastifyStatic, { root: handoutsDir, serve: false });
+  app.register(publicationRoutes, { handoutsDir });
+
+  // Fastify's own JSON shape for the reserved half of the namespace, the plain page for
+  // publication space — the same split publicationRoutes makes for a matched request.
+  app.setNotFoundHandler((request, reply) => {
+    const pathname = request.url.split('?')[0] ?? '/';
+    if (isReservedPath(pathname)) {
+      reply.code(404).send({ message: 'Not Found', error: 'Not Found', statusCode: 404 });
+      return;
+    }
+    sendNotFoundPage(reply);
+  });
 
   return app;
 }

@@ -59,9 +59,7 @@ describe('resolvePublicationFile', () => {
   });
 
   it('gives undefined for a missing file', async () => {
-    expect(
-      await resolvePublicationFile(handoutsDir, 'aaaaaaaa', ['missing.html']),
-    ).toBeUndefined();
+    expect(await resolvePublicationFile(handoutsDir, 'aaaaaaaa', ['missing.html'])).toBeUndefined();
   });
 
   it('gives undefined for a traversal attempt', async () => {

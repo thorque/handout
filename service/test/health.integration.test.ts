@@ -1,16 +1,28 @@
+import { mkdtempSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import os from 'node:os';
+import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import { loadConfig } from '../src/config';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
 
+// A temp directory, not the repository's own var/data: buildApp now creates the handouts
+// directory on the spot, and this suite must not write into the repository.
+const dataDir = mkdtempSync(path.join(os.tmpdir(), 'handout-health-'));
+
+afterAll(() => {
+  rmSync(dataDir, { recursive: true, force: true });
+});
+
 const config = loadConfig({
   LOG_LEVEL: 'silent',
   POSTGRES_URL: 'postgresql://user:pass@host:5432/db',
   HANDOUT_PASSWORD_KEY: Buffer.alloc(32, 7).toString('base64'),
+  HANDOUT_DATA_DIR: dataDir,
 });
 
 describe('GET /_handout/api/health', () => {
@@ -53,13 +65,17 @@ describe('GET /_handout/api/health', () => {
   it('leaves the root free for publication space', async () => {
     const response = await start(true).inject({ method: 'GET', url: '/' });
 
+    // Publication space, so it answers the plain not-found page, not the API's JSON —
+    // proof that the root is not the API, just as well as a JSON 404 would have been.
     expect(response.statusCode).toBe(404);
-    expect(response.headers['content-type']).toMatch(/^application\/json/);
+    expect(response.headers['content-type']).toMatch(/^text\/html/);
   });
 
   it('matches the reserved prefix as a whole path segment', async () => {
     const response = await start(true).inject({ method: 'GET', url: '/_handoutx/api/health' });
 
+    // /_handoutx/... is publication space, not the look-alike prefix it appears to be.
     expect(response.statusCode).toBe(404);
+    expect(response.headers['content-type']).toMatch(/^text\/html/);
   });
 });
