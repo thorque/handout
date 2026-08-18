@@ -65,6 +65,11 @@ changing anything it touches.
 
 - Everything that goes into this repository is written in English: code, comments,
   documentation, commit messages.
+- **`docs/` describes what the code does and why, never what is planned.** No issue keys, no
+  links into an issue tracker or wiki, no "this will be added later" — a reader of the
+  repository cannot follow any of it, and it is wrong the moment the plan changes. A reason
+  that needs a ticket number to stand up has not been written down yet. If a file under
+  `docs/` would only say which work comes next, it should not exist.
 - Colors, spacing, radii and states come from design tokens. No hard-coded values in
   components.
 - **Use the base components in `web/src/components/`** — look there before writing UI, and
