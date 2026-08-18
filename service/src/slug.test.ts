@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { generateSlug, SLUG_ALPHABET, SLUG_LENGTH } from './slug';
+import { generateSlug, isSlug, SLUG_ALPHABET, SLUG_LENGTH, SLUG_PATTERN } from './slug';
 
 describe('SLUG_ALPHABET', () => {
   it('leaves out everything that could collide or be misread', () => {
@@ -50,5 +52,40 @@ describe('generateSlug', () => {
     }
 
     expect(slugs.size).toBe(5_000);
+  });
+});
+
+describe('isSlug', () => {
+  it('accepts a freshly drawn slug and a hand-written one', () => {
+    expect(isSlug(generateSlug())).toBe(true);
+    expect(isSlug('abcdef')).toBe(true);
+  });
+
+  it('rejects everything that is not exactly the documented shape', () => {
+    // Each of these catches a regex written without anchors or with the wrong alphabet.
+    for (const value of [
+      'abcde', // five characters, below the minimum
+      'abcdefghi', // nine characters, above the maximum
+      '', // empty
+      'ABCDEF', // uppercase
+      'abcdef_g', // underscore — reserved for /_handout/
+      'abcdef0h', // '0' is not in the alphabet
+      'abcdefoi', // 'o' and 'i' are confusables, not in the alphabet
+      '..', // traversal-shaped
+      '_handout', // the reserved prefix itself
+      ' abcdef', // leading space
+      'abcdef ', // trailing space
+    ]) {
+      expect(isSlug(value), `expected "${value}" to be rejected`).toBe(false);
+    }
+  });
+
+  it('agrees with the CHECK constraint on slug_reservations.slug', () => {
+    const sql = readFileSync(
+      path.resolve(import.meta.dirname, '../migrations/0001_publications.sql'),
+      'utf8',
+    );
+    const match = /slug ~ '([^']+)'/.exec(sql);
+    expect(match?.[1]).toBe(SLUG_PATTERN.source);
   });
 });

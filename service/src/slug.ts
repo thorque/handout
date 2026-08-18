@@ -28,3 +28,15 @@ export function generateSlug(): string {
   }
   return slug;
 }
+
+/**
+ * The shape a valid address part has: six to eight characters from {@link SLUG_ALPHABET}.
+ * Character-for-character the CHECK constraint on `slug_reservations.slug` in
+ * `service/migrations/0001_publications.sql` — a test pins the two together.
+ */
+export const SLUG_PATTERN = /^[23456789abcdefghjkmnpqrstuvwxyz]{6,8}$/;
+
+/** Whether `value` could be a publication's address part. */
+export function isSlug(value: string): boolean {
+  return SLUG_PATTERN.test(value);
+}
