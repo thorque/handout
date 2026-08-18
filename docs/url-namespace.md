@@ -8,14 +8,15 @@ That prefix is **`/_handout`**.
 
 ## Sub-namespaces
 
-| Path                      | Owner                                                              |
-| ------------------------- | ------------------------------------------------------------------ |
-| `/_handout/api/**`        | the HTTP API (health today; uploads, publications, sessions later) |
-| `/_handout/app/**`        | the front end's own routes once the service serves the built app   |
-| `/_handout/unlock/**`     | the recipient password page                                        |
-| `/_handout/assets/**`     | the built front end's static assets                                |
-| `/_handout/design/**`     | the design layer: tokens, fonts, brand assets, the no-React page   |
-| `/_handout/design-system` | the sample page showing every base component in every state        |
+| Path                      | Owner                                                                                                              |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `/_handout/api/**`        | the HTTP API (health today; uploads, publications, sessions later)                                                 |
+| `/_handout/app/**`        | the front end's own routes once the service serves the built app                                                   |
+| `/_handout/unlock/**`     | the recipient password page                                                                                        |
+| `/_handout/assets/**`     | the built front end's static assets                                                                                |
+| `/_handout/design/**`     | the design layer: tokens, fonts, brand assets, the no-React page                                                   |
+| `/_handout/design-system` | the sample page showing every base component in every state                                                        |
+| `/_handout/vite-hmr`      | **dev only** — Vite's live-reload socket (`web/vite.config.ts`); no such path in a deployment, see `docs/proxy.md` |
 
 Everything else at the root is publication space and belongs to the publication routes.
 

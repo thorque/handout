@@ -89,11 +89,21 @@ function statusWithHost(
 }
 
 /**
+ * How long to wait for either a `response` or an `upgrade` before giving up. Measured: a
+ * non-socket path under `/_handout/*` gives neither — Vite answers nothing at all, no
+ * `response`, no `upgrade`, no `error` — so without a timeout the promise never settles
+ * and the check hangs forever instead of failing. 3s is generous for a same-host request.
+ */
+const WEBSOCKET_UPGRADE_TIMEOUT_MS = 3000;
+
+/**
  * Performs a raw WebSocket handshake against `pathname` on `targetHost`/`port` and
  * resolves with the response's status and headers, then closes the connection right
  * after — this only proves the handshake completes, nothing here speaks vite-hmr's
  * message protocol. Node's `fetch` cannot send an `Upgrade` request, so this goes
- * through `http.request` directly, the same reason `statusWithHost` does.
+ * through `http.request` directly, the same reason `statusWithHost` does. Rejects, rather
+ * than hanging, when neither a response nor an upgrade arrives in time — exactly the
+ * fallback this check exists to catch, so the guard needs its own guard.
  */
 function websocketUpgrade(
   targetHost: string,
@@ -114,17 +124,31 @@ function websocketUpgrade(
         'Sec-WebSocket-Protocol': 'vite-hmr',
       },
     });
+    const timeout = setTimeout(() => {
+      request.destroy();
+      reject(
+        new Error(
+          `no response or upgrade within ${WEBSOCKET_UPGRADE_TIMEOUT_MS}ms for ${pathname} ` +
+            '— expected a 101 upgrade or an HTTP response, got neither',
+        ),
+      );
+    }, WEBSOCKET_UPGRADE_TIMEOUT_MS);
     request.on('upgrade', (response, socket) => {
+      clearTimeout(timeout);
       socket.end();
       resolve({ statusCode: response.statusCode ?? 0, headers: response.headers });
     });
     request.on('response', (response) => {
       // No upgrade happened at all — still resolve, so the check reports a status
-      // instead of hanging.
+      // instead of failing on a mismatched expectation.
+      clearTimeout(timeout);
       response.resume();
       resolve({ statusCode: response.statusCode ?? 0, headers: response.headers });
     });
-    request.on('error', reject);
+    request.on('error', (error) => {
+      clearTimeout(timeout);
+      reject(error);
+    });
     request.end();
   });
 }
