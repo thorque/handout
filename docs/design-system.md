@@ -103,7 +103,7 @@ the identical behaviour and would otherwise carry a copy of it.
 ### The `useTheme` contract
 
 `web/src/theme/useTheme.ts` is the surface the appearance switcher in the profile menu
-(HAN-26) attaches to:
+attaches to:
 
 ```ts
 type ThemePreference = 'system' | 'light' | 'dark';
@@ -308,7 +308,7 @@ Two facts about a referenced SVG, both **measured in the browser**, not assumed:
 So a mark **on a page is written inline**, where it inherits `currentColor` and reads
 `var(--ho-accent)` and therefore follows the page in both modes and under an explicit
 choice. `Wordmark.tsx` does this for the application, and `no-react.html` does it by hand,
-which is the route HAN-20's password page has to take. The `design-no-react-page` smoke
+which is the route any server-rendered page without React has to take. The `design-no-react-page` smoke
 check fails if an `<img>` or a reference to a brand file reappears on that page.
 
 The three files under `brand/` keep their internal blocks: they are the fallback for every
@@ -520,5 +520,5 @@ module's class. Both rules name the other in a comment.
 The frame is **not** on the recipient password page: nobody is signed in there. Today that is
 proven against the React-free stand-in `no-react.html`, in the `design-no-react-page` smoke
 check — the page carries no `aria-haspopup="menu"`, no `role="menu"`, no `radiogroup`, no
-`Erscheinungsbild` and no `Abmelden`. **HAN-20 inherits the obligation** to re-prove it on the
-real password page.
+`Erscheinungsbild` and no `Abmelden`. Any later page for recipients
+inherits the obligation to re-prove it on itself.
