@@ -11,6 +11,7 @@
     "web"
   ],
   "scripts": {
+    "start": "npm run start -w service",
     "dev:service": "npm run dev -w service",
     "dev:web": "npm run dev -w web",
     "test": "npm run test -w service && npm run test -w web",

@@ -1,0 +1,83 @@
+# The operating stack (Technical Brief: "Betrieb als Docker-Compose-Verbund"), not a
+# pipeline file. The caddy and postgres services are taken from .monoceros/deploy.md block
+# by block; every deviation from that file is commented where it happens.
+
+services:
+  handout:
+    build: .
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      HANDOUT_DATA_DIR: /var/lib/handout
+      DATABASE_URL: postgresql://${POSTGRES_USER:?set it in .env}:${POSTGRES_PASSWORD:?set it in .env}@postgres:5432/${POSTGRES_DB:?set it in .env}
+      HANDOUT_PASSWORD_KEY: ${HANDOUT_PASSWORD_KEY:?set it in .env, 32 bytes base64 — openssl rand -base64 32}
+    volumes:
+      # One directory per publication lives in here, under `handouts/`. A volume, so a
+      # restart or a rebuild of the service keeps every published artifact — criterion 2.
+      - handout-data:/var/lib/handout
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    # No `--watch`: reloading on a file change is a dev convenience, and in a pipeline the
+    # config is fixed for the life of the container.
+    command: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+    environment:
+      CADDY_SITE_PORT: ${CADDY_SITE_PORT:?the port Caddy listens on, e.g. 80}
+      APP_HOST: ${APP_HOST:?the compose service name of your app}
+      APP_PORT: ${APP_PORT:?the port your app listens on}
+      # Deviation from the catalog block: the one Caddyfile has a second upstream for
+      # /_handout/*, which the catalog block does not know about. In this story the service
+      # does not serve the built front end yet (that arrives with the story that does), so
+      # /_handout/** answers 404 in this stack until then — the one place it is knowingly
+      # incomplete.
+      WEB_HOST: ${WEB_HOST:?the compose service name that serves /_handout/*}
+      WEB_PORT: ${WEB_PORT:?the port that service listens on}
+    volumes:
+      # The Caddyfile is a repo artifact, the same file the workbench mounts.
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificate state, needed as soon as the site address carries a real domain and
+      # Caddy obtains its own certificate. Harmless behind an ingress that terminates TLS
+      # instead.
+      - caddy-data:/data
+    # Deviation from the catalog block: published, because a browser outside the compose
+    # network has to reach it here — the catalog block assumes a pipeline that reaches Caddy
+    # on the compose network only.
+    ports:
+      - '${HANDOUT_HTTP_PORT:-80}:${CADDY_SITE_PORT}'
+    healthcheck:
+      # Deviation from the catalog block, which probes `/`. In this application `/` is
+      # publication space and answers 404 by design, on which `wget` exits non-zero — the
+      # container would never become healthy. `/_handout/api/health` is always either 200
+      # (schema present) or 503 (degraded), never 404, so it is a real health probe instead.
+      test:
+        [CMD, wget, -q, -O, /dev/null, 'http://localhost:${CADDY_SITE_PORT}/_handout/api/health']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set it as a pipeline secret}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set it as a pipeline secret}
+      POSTGRES_DB: ${POSTGRES_DB:?set it as a pipeline secret}
+    # Deviation from the catalog block, which has no volume: that file targets a pipeline,
+    # where each run starts empty on purpose. This is the stack the product is operated in,
+    # and a database without a volume loses everything on `docker compose down` or an image
+    # change. Not a criterion-2 concern — criterion 2 restarts the handout service, and
+    # postgres keeps running regardless — this is an operational necessity, stated as such.
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: [CMD, pg_isready, -h, 127.0.0.1, -U, '${POSTGRES_USER}', -d, '${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  handout-data:
+  postgres-data:
+  caddy-data:

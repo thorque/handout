@@ -5,12 +5,12 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "tsx watch src/main.ts",
+    "start": "tsx src/main.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/pg": "^8.21.0",
-    "tsx": "^4.23.12",
     "vite": "^8.2.1",
     "vitest": "^4.1.10"
   },
@@ -19,6 +19,7 @@
     "dotenv": "^17.4.2",
     "fastify": "^5.12.0",
     "node-pg-migrate": "^9.0.0",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "tsx": "^4.23.12"
   }
 }
