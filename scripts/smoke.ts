@@ -5,6 +5,7 @@
  * places a fixture publication in the data directory before the checks run and removes it
  * again afterwards. It still imports no application code.
  */
+import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
@@ -82,6 +83,47 @@ function statusWithHost(
         });
       },
     );
+    request.on('error', reject);
+    request.end();
+  });
+}
+
+/**
+ * Performs a raw WebSocket handshake against `pathname` on `targetHost`/`port` and
+ * resolves with the response's status and headers, then closes the connection right
+ * after — this only proves the handshake completes, nothing here speaks vite-hmr's
+ * message protocol. Node's `fetch` cannot send an `Upgrade` request, so this goes
+ * through `http.request` directly, the same reason `statusWithHost` does.
+ */
+function websocketUpgrade(
+  targetHost: string,
+  port: number,
+  pathname: string,
+): Promise<{ statusCode: number; headers: http.IncomingHttpHeaders }> {
+  return new Promise((resolve, reject) => {
+    const request = http.request({
+      host: targetHost,
+      port,
+      path: pathname,
+      method: 'GET',
+      headers: {
+        Connection: 'Upgrade',
+        Upgrade: 'websocket',
+        'Sec-WebSocket-Version': '13',
+        'Sec-WebSocket-Key': randomBytes(16).toString('base64'),
+        'Sec-WebSocket-Protocol': 'vite-hmr',
+      },
+    });
+    request.on('upgrade', (response, socket) => {
+      socket.end();
+      resolve({ statusCode: response.statusCode ?? 0, headers: response.headers });
+    });
+    request.on('response', (response) => {
+      // No upgrade happened at all — still resolve, so the check reports a status
+      // instead of hanging.
+      response.resume();
+      resolve({ statusCode: response.statusCode ?? 0, headers: response.headers });
+    });
     request.on('error', reject);
     request.end();
   });
@@ -574,6 +616,37 @@ try {
     assert(
       contentType(response).includes('text/css') && !contentType(response).includes('text/html'),
       `expected CSS, got "${contentType(response)}"`,
+    );
+  });
+
+  await check('proxy-hmr', async () => {
+    // Measured (HAN-7): with no path configured, the HMR socket sits at "/", which
+    // Caddy's catch-all hands to the service — an upgrade there 404s instead of
+    // switching protocols. web/vite.config.ts moves it to /_handout/vite-hmr, which the
+    // existing `handle /_handout/*` block already carries to Vite. This is the check
+    // that would catch that route breaking again, silently, behind a page that still
+    // loads.
+    const proxyUrl = new URL(PROXY_ORIGIN);
+    const port = proxyUrl.port === '' ? 80 : Number(proxyUrl.port);
+    let result: { statusCode: number; headers: http.IncomingHttpHeaders };
+    try {
+      result = await websocketUpgrade(proxyUrl.hostname, port, '/_handout/vite-hmr');
+    } catch (error) {
+      const cause = error instanceof Error ? error.message : String(error);
+      throw new Error(
+        `caddy did not answer at ${PROXY_ORIGIN}: ${cause} — has the caddy volume mount been ` +
+          'added to the container yml and `monoceros apply handout` been run? See README, ' +
+          '"The proxy in front"',
+      );
+    }
+    assert(
+      result.statusCode === 101,
+      `expected 101 Switching Protocols, got ${result.statusCode} — the HMR socket does ` +
+        'not reach Vite through the proxy',
+    );
+    assert(
+      result.headers['sec-websocket-protocol'] === 'vite-hmr',
+      'the upgrade response is missing Sec-WebSocket-Protocol: vite-hmr',
     );
   });
 

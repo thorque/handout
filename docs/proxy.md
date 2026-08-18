@@ -19,6 +19,26 @@ The permanent fix for the `@vite-dev` block is Vite's `base` becoming `/_handout
 open item in [`docs/url-namespace.md`](url-namespace.md); it belongs to the story that
 serves the built front end.
 
+## Live reload (HMR) through the proxy
+
+Vite's dev client opens its own WebSocket back to the dev server for live reload. By
+default that socket sits at the site root (`/`), which falls into the catch-all `handle`
+block above and reaches the service, not Vite — measured: an upgrade request to `/` through
+Caddy answers Fastify's plain 404 page instead of `101 Switching Protocols`, while the same
+upgrade sent directly to `127.0.0.1:5173` succeeds. `server.ws.clientPort` would not have
+fixed this: the problem is the socket's **path**, not its port.
+
+The fix is in `web/vite.config.ts`, not in this file: `server.ws.path` is set to
+`/_handout/vite-hmr`, so the socket sits under the reserved prefix and the existing
+`handle /_handout/*` block already carries it to Vite — no new Caddy block needed. Verified
+with a real handshake through `http://caddy:81`: `101 Switching Protocols` with
+`Sec-WebSocket-Protocol: vite-hmr`, the same response the direct connection to port 5173
+gives. `scripts/smoke.ts`'s `proxy-hmr` check repeats that handshake so the route does not
+silently break again behind a page that still loads fine.
+
+Publication space is unaffected: the service registers no upgrade handler, so an upgrade
+request anywhere else still gets the plain not-found page, not a socket.
+
 ## `trusted_proxies`
 
 The Caddyfile opens with:
