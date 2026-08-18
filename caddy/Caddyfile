@@ -1,0 +1,46 @@
+# Caddy in front of Handout. One file for the workbench and for a deployment: the port and
+# every upstream come from the environment and fall back to the workbench's values.
+#
+# The trusted_proxies block must stay the first block in the file. `monoceros share` puts its
+# own HTTPS terminator in front of Caddy and forwards over plain http, passing the original
+# scheme in the headers; without this, Caddy replaces it with what it sees. That is what makes
+# X-Forwarded-Proto / X-Forwarded-Host trustworthy for the stories that read them — see
+# docs/proxy.md.
+{
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
+# No domain name in the site address, on purpose: with one, Caddy would try to obtain a TLS
+# certificate and fail. The port has to match the caddy service's port/httpPort (81 here).
+# Certificate behaviour is not armed in this story — HAN-22 adds the endpoint Caddy has to ask
+# before it may issue a certificate per publication host.
+:{$CADDY_SITE_PORT:81} {
+	# The application: its own routes, its assets, and the API. In the workbench that is the
+	# Vite dev server, which proxies /_handout/api to the service itself; in a deployment
+	# WEB_HOST/WEB_PORT point at the service, which serves the built app.
+	handle /_handout/* {
+		reverse_proxy {$WEB_HOST:workspace}:{$WEB_PORT:5173}
+	}
+
+	# Workbench only, and inert anywhere else. The Vite dev server serves its own client, the
+	# application's modules and its pre-bundled dependencies from paths outside /_handout/
+	# (measured: /@vite/client, /@react-refresh, /src/**, /node_modules/.vite/deps/**), so
+	# without this the shell would load through the proxy and every module behind it would
+	# 404 — a white page. None of these first segments can ever be a publication address:
+	# `src` is too short for a slug, `node_modules` contains `_`, and `@` is not in the slug
+	# alphabet. In a deployment WEB_HOST is the service, which answers these paths exactly as
+	# the catch-all below would, so this block changes nothing there.
+	# The permanent fix is Vite's `base` becoming `/_handout/`, which is the open item in
+	# docs/url-namespace.md and belongs to the story that serves the built front end.
+	@vite-dev path /@* /src/* /node_modules/*
+	handle @vite-dev {
+		reverse_proxy {$WEB_HOST:workspace}:{$WEB_PORT:5173}
+	}
+
+	# Everything else is publication space and belongs to the service.
+	handle {
+		reverse_proxy {$APP_HOST:workspace}:{$APP_PORT:3000}
+	}
+}
