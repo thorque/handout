@@ -15,8 +15,8 @@ under `<HANDOUT_DATA_DIR>/handouts/<slug>/` — one directory per publication.
 
 `handouts/` sits between the data directory and a publication on purpose. Delivery
 (`resolvePublicationFile`) looks only under this directory, so nothing else that later
-lands directly under `<HANDOUT_DATA_DIR>` — a staging area for unpacking, which HAN-9/HAN-10
-will want — can ever become a reachable address by accident.
+lands directly under `<HANDOUT_DATA_DIR>` — a staging area for unpacking, for instance —
+can ever become a reachable address by accident.
 
 The directory name **may be the slug**, because the slug is immutable for the
 publication's whole lifetime: the `BEFORE UPDATE` trigger and `updatePublication` both
@@ -64,8 +64,8 @@ separate special case for the bare address.
 `@fastify/static` is registered with `serve: false`, which adds no route of its own — it
 only decorates the reply with `sendFile`. Address resolution and containment above stay
 this application's own code; only the actual sending is delegated, once resolution has
-already proven the path safe. Measured defaults, recorded here because the _policy_ is
-HAN-21's to decide:
+already proven the path safe. The defaults it sends, measured rather than
+assumed, so a change to them shows up as a change here:
 
 | Header          | Measured value                 |
 | --------------- | ------------------------------ |
@@ -79,30 +79,21 @@ requests and a correct `HEAD` come for free with the same plugin.
 
 ## The not-found answer, and the namespace split
 
-An address that cannot be resolved answers the plain, undesigned not-found page — see
+An address that cannot be resolved answers a plain, undesigned not-found page — see
 [`docs/url-namespace.md`](url-namespace.md) for the split between publication space and
-`/_handout/**`, and HAN-19's `han19-ac-5` for the designed replacement this story
-deliberately does not build.
+`/_handout/**`.
 
-## No origin isolation between publications, in path mode
+## No origin isolation between publications
 
-Every publication in path mode is served from the same origin
-(`http://<instance-domain>/<slug>/`), so a script in one publication shares that origin
-with every other — there is no browser-level isolation between them. That is inherent to
-path mode, not something this story fixes; it is the reason subdomain mode exists
-(`https://<slug>.<base-domain>/`, HAN-12's to build).
+Every publication is served from the same origin (`https://<instance-domain>/<slug>/`), so a
+script in one publication shares that origin with every other — there is no browser-level
+isolation between them. That follows from operating one host with one certificate, and it
+bounds what a password on a publication can promise: reachable is whatever that browser can
+already reach.
 
-## What decides whether an address exists, and why
+## What decides whether an address exists
 
-In this story the **filesystem** decides — a directory that resolves is served, one that
-does not answers not-found. Not the database: `createPublication` needs an `ownerSubject`
-from OIDC, and there is no login until HAN-8, so no publication row can exist yet. Once
-HAN-8 lands, later stories can choose to gate delivery on a database lookup too (a deleted
-publication whose directory was not yet swept, for instance) — that decision does not
-belong to HAN-7.
-
-## Not delivery's business (yet)
-
-- Recording the last access — HAN-19.
-- Password protection at delivery time — HAN-11, HAN-20.
-- Cache policy beyond the plugin's own defaults above — HAN-21.
+The **filesystem** decides: a directory that resolves is served, one that does not answers
+not-found. The database is not consulted, so delivery keeps working while it is unreachable.
+The cost is that removing a publication means removing both the row and the directory, and a
+directory left behind is a live address.

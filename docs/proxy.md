@@ -62,20 +62,18 @@ prevents for every later story that reads those headers (see below).
 
 `:{$CADDY_SITE_PORT:81}` carries no domain. With one, Caddy would try to obtain a TLS
 certificate for it and fail — there is no certificate story yet. The port has to match the
-`caddy` service's `port`/`httpPort` (81 in the workbench). Certificate behaviour is
-deliberately not armed here: HAN-22 adds the endpoint Caddy has to ask before it may issue
-a certificate per publication host, HAN-12 the address mode and the base domain that
-decide when a host even needs one.
+`caddy` service's `port`/`httpPort` (81 in the workbench). In a deployment the site address carries the
+instance's one hostname and Caddy obtains one ordinary certificate for it.
 
 ## Variables
 
-| Variable          | Workbench default | Compose value                                                               |
-| ----------------- | ----------------- | --------------------------------------------------------------------------- |
-| `CADDY_SITE_PORT` | `81`              | `80` (or whatever `HANDOUT_HTTP_PORT` maps to)                              |
-| `APP_HOST`        | `workspace`       | `handout` (the compose service name)                                        |
-| `APP_PORT`        | `3000`            | `3000`                                                                      |
-| `WEB_HOST`        | `workspace`       | `handout` (until the built app is served from the service, HAN-13 or later) |
-| `WEB_PORT`        | `5173`            | `3000`                                                                      |
+| Variable          | Workbench default | Compose value                                       |
+| ----------------- | ----------------- | --------------------------------------------------- |
+| `CADDY_SITE_PORT` | `81`              | `80` (or whatever `HANDOUT_HTTP_PORT` maps to)      |
+| `APP_HOST`        | `workspace`       | `handout` (the compose service name)                |
+| `APP_PORT`        | `3000`            | `3000`                                              |
+| `WEB_HOST`        | `workspace`       | `handout` — the service, which serves the built app |
+| `WEB_PORT`        | `5173`            | `3000`                                              |
 
 ## The bind-mount
 
@@ -84,17 +82,14 @@ Only the host can add it — the container yml lives outside this container. See
 `monoceros apply` command. Once applied, Caddy watches the file: every later edit to
 `caddy/Caddyfile` is live on save, no further apply needed.
 
-## The rule for later stories: per-request values come from the request
+## Per-request values come from the request
 
-Anything that has to be correct **per request** — a link that is rendered (HAN-13), an
-OIDC issuer that is stamped (HAN-8), a redirect target for the password page (HAN-20) —
-comes from the request's `X-Forwarded-Host` / `X-Forwarded-Proto`, never from
-`CADDY_PUBLIC_URL` or a configured base URL. The configured values are for what is written
-once (this Caddyfile, for instance). The `trusted_proxies` block above is what makes those
-headers trustworthy in the first place.
-
-**HAN-7 builds none of this** — no header reading, no base-URL configuration. It is
-recorded here so HAN-8, HAN-13 and HAN-20 do not each invent it independently.
+Anything that has to be correct **per request** — a rendered link, a stamped OIDC issuer, a
+redirect target — comes from the request's `X-Forwarded-Host` / `X-Forwarded-Proto`, never
+from `CADDY_PUBLIC_URL` or a configured base URL. Configured values are for what is written
+once, this Caddyfile for instance. The `trusted_proxies` block above is what makes those
+headers trustworthy in the first place; without it Caddy overwrites them with what it sees,
+and a page reached over https gets told it arrived over http.
 
 ## A harmless asymmetry
 

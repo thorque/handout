@@ -39,14 +39,13 @@ and the request handler consults it first, before anything else decides how to a
   server-rendered not-found page: 404, `text/html`. A human with a browser is what is
   there, so HTML proves the address does not exist just as well as JSON would, and reads
   better. See [`docs/data-directory.md`](data-directory.md) for the resolution rules that
-  decide this, and HAN-19's `han19-ac-5` for the designed version this story deliberately
-  leaves undone.
+  decide this.
 - `/_handout/**` keeps Fastify's own JSON 404 shape — the API contract must not change.
 
 Behind the proxy, the application's home is **`/_handout/`**, not `/`: `/` is publication
 space and answers the not-found page, while Vite's SPA fallback serves the shell at
-`/_handout/` and `resolveRoute` maps it to the `app` route. HAN-13 gives the publisher's
-entry point a real landing page there; this story does not pre-empt it with a redirect.
+`/_handout/` and `resolveRoute` maps it to the `app` route. `/` is deliberately not
+redirected there — the root belongs to publication space.
 See [`docs/proxy.md`](proxy.md) for the `@vite-dev` handle block that is the temporary
 stand-in for Vite's `base` becoming `/_handout/` — the open item below.
 
