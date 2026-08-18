@@ -8,14 +8,15 @@ That prefix is **`/_handout`**.
 
 ## Sub-namespaces
 
-| Path                      | Owner                                                              |
-| ------------------------- | ------------------------------------------------------------------ |
-| `/_handout/api/**`        | the HTTP API (health today; uploads, publications, sessions later) |
-| `/_handout/app/**`        | the front end's own routes once the service serves the built app   |
-| `/_handout/unlock/**`     | the recipient password page                                        |
-| `/_handout/assets/**`     | the built front end's static assets                                |
-| `/_handout/design/**`     | the design layer: tokens, fonts, brand assets, the no-React page   |
-| `/_handout/design-system` | the sample page showing every base component in every state        |
+| Path                      | Owner                                                                                                              |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `/_handout/api/**`        | the HTTP API (health today; uploads, publications, sessions later)                                                 |
+| `/_handout/app/**`        | the front end's own routes once the service serves the built app                                                   |
+| `/_handout/unlock/**`     | the recipient password page                                                                                        |
+| `/_handout/assets/**`     | the built front end's static assets                                                                                |
+| `/_handout/design/**`     | the design layer: tokens, fonts, brand assets, the no-React page                                                   |
+| `/_handout/design-system` | the sample page showing every base component in every state                                                        |
+| `/_handout/vite-hmr`      | **dev only** — Vite's live-reload socket (`web/vite.config.ts`); no such path in a deployment, see `docs/proxy.md` |
 
 Everything else at the root is publication space and belongs to the publication routes.
 
@@ -27,6 +28,27 @@ Everything else at the root is publication space and belongs to the publication 
 2. **The prefix is matched as a whole path segment, never as a string prefix.**
    `/_handoutx/...` is publication space, not application space. An implementation that
    routes on `url.startsWith('/_handout')` is wrong.
+
+## How each half answers a request it cannot serve
+
+`isReservedPath` (`service/src/namespace.ts`) is the single implementation of rule 2 above,
+and the request handler consults it first, before anything else decides how to answer:
+
+- Publication space (everything `isReservedPath` says no to — `/`, `/nope`,
+  `/<slug>/missing.css`, and `/_handoutx/api/health` too) answers the plain,
+  server-rendered not-found page: 404, `text/html`. A human with a browser is what is
+  there, so HTML proves the address does not exist just as well as JSON would, and reads
+  better. See [`docs/data-directory.md`](data-directory.md) for the resolution rules that
+  decide this, and HAN-19's `han19-ac-5` for the designed version this story deliberately
+  leaves undone.
+- `/_handout/**` keeps Fastify's own JSON 404 shape — the API contract must not change.
+
+Behind the proxy, the application's home is **`/_handout/`**, not `/`: `/` is publication
+space and answers the not-found page, while Vite's SPA fallback serves the shell at
+`/_handout/` and `resolveRoute` maps it to the `app` route. HAN-13 gives the publisher's
+entry point a real landing page there; this story does not pre-empt it with a redirect.
+See [`docs/proxy.md`](proxy.md) for the `@vite-dev` handle block that is the temporary
+stand-in for Vite's `base` becoming `/_handout/` — the open item below.
 
 ## Why it is fixed now
 

@@ -59,6 +59,11 @@ coding around it.
   paths — issuer URL, client ID and secret are the whole configuration.
 - **Never touch the delivered artifact.** Absolute paths in path mode produce a warning at
   publish time and nothing else.
+- **Published content lives at `<dataDir>/handouts/<slug>/`**, one directory per
+  publication. Delivery looks only there, and there is no storage abstraction — see
+  `docs/data-directory.md`.
+- **There is exactly one Caddyfile**, at `caddy/Caddyfile`, for the workbench and for a
+  deployment alike — see `docs/proxy.md`.
 - **The application owns `/_handout/`, everything else at the root is publication space.**
   API, app routes, the password page and the built assets all live under that prefix; a
   generated slug must never be able to produce it, so the slug alphabet excludes `_`. See

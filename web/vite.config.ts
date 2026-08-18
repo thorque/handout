@@ -14,6 +14,13 @@ export default defineConfig({
       // relative path. See docs/url-namespace.md.
       '/_handout/api': { target: 'http://127.0.0.1:3000', changeOrigin: false },
     },
+    ws: {
+      // Measured (HAN-7): with no path set, the HMR socket sits at "/", which Caddy's
+      // catch-all routes to the service — an upgrade there 404s instead of switching
+      // protocols. Moving it under /_handout/ makes the existing `handle /_handout/*`
+      // block carry it to Vite instead, both directly and through Caddy.
+      path: '/_handout/vite-hmr',
+    },
   },
   test: {
     environment: 'jsdom',

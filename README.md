@@ -31,14 +31,14 @@ with `"status": "degraded"` when the schema is not there.
 
 Everything is read from the environment; `.env` is loaded for local development.
 
-| Variable                  | Meaning                                                                  |
-| ------------------------- | ------------------------------------------------------------------------ |
-| `PORT`, `HOST`            | where the service listens; defaults `3000` and `0.0.0.0`                 |
-| `LOG_LEVEL`               | Fastify's log level, default `info`                                      |
-| `HANDOUT_DATA_DIR`        | where published content will live, absolute                              |
-| `DATABASE_URL`            | the database; falls back to `POSTGRES_URL`, which the workbench provides |
-| `HANDOUT_DATABASE_SCHEMA` | the schema migrations and queries work in, default `public`              |
-| `HANDOUT_PASSWORD_KEY`    | **required**, 32 bytes base64 — encrypts publication passwords           |
+| Variable                  | Meaning                                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------------------------ |
+| `PORT`, `HOST`            | where the service listens; defaults `3000` and `0.0.0.0`                                         |
+| `LOG_LEVEL`               | Fastify's log level, default `info`                                                              |
+| `HANDOUT_DATA_DIR`        | where content lives: `<HANDOUT_DATA_DIR>/handouts/<slug>/`, absolute (default `<repo>/var/data`) |
+| `DATABASE_URL`            | the database; falls back to `POSTGRES_URL`, which the workbench provides                         |
+| `HANDOUT_DATABASE_SCHEMA` | the schema migrations and queries work in, default `public`                                      |
+| `HANDOUT_PASSWORD_KEY`    | **required**, 32 bytes base64 — encrypts publication passwords                                   |
 
 `HANDOUT_PASSWORD_KEY` has no default and no fallback: publication passwords have to stay
 readable for their owner, so they are encrypted rather than hashed, and losing the key
@@ -50,6 +50,11 @@ drop it again, so a test run leaves the development database untouched. They tak
 from `HANDOUT_TEST_DATABASE_URL`, `DATABASE_URL` or `POSTGRES_URL`; with none of them set
 they skip themselves and say so, with one set but unreachable they fail.
 
+Compose-only variables: `docker compose` reads `.env` too, so the variables the compose
+stack needs (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `HANDOUT_HTTP_PORT`,
+`CADDY_SITE_PORT`, `APP_HOST`, `APP_PORT`, `WEB_HOST`, `WEB_PORT`) sit in the same file, in
+their own fenced block in `.env.example`, commented so they fail loudly until filled in.
+
 Inside the Monoceros workbench both servers are started together with
 `monoceros-ctl start handout-app`, and are then reachable at
 <http://handout.localhost> (service) and <http://handout-5173.localhost> (front end).
@@ -57,6 +62,40 @@ Inside the Monoceros workbench both servers are started together with
 The front end talks to the service through its own origin under a relative path: the Vite
 dev server proxies `/_handout/api` to the service, so the browser only ever sees one
 origin.
+
+## The proxy in front
+
+Caddy fronts everything, including the front end — one Caddyfile at
+[`caddy/Caddyfile`](caddy/Caddyfile), for the workbench and for a deployment alike. See
+[`docs/proxy.md`](docs/proxy.md) for the three routes it exposes and the reasoning behind
+each. The address to use behind it is <http://handout-caddy.localhost>.
+
+The bind-mount that gives Caddy this file lives in the container yml on the host, so it
+needs a one-time step there:
+
+```yaml
+volumes:
+  - projects/handout-app/caddy:/etc/caddy:ro
+```
+
+under the `caddy` service, followed by `monoceros apply handout`. After that, Caddy
+watches the file: every later edit is live on save.
+
+## Running the compose stack
+
+`compose.yaml` and the `Dockerfile` describe the stack Handout actually runs in:
+`handout` + `postgres` + `caddy`, each with the volumes that keep their state across a
+restart. **This container has no Docker** — it can build and test the application, not run
+the stack — so this is a host-side operation:
+
+```
+docker compose up -d --build
+docker compose ps
+```
+
+`.env.example` has the compose-only variables `docker compose` needs, commented, in
+addition to the service's own. See [`docs/data-directory.md`](docs/data-directory.md) for
+the data layout the `handout-data` volume holds.
 
 ## Commands
 
@@ -85,6 +124,9 @@ service/          the HTTP service (Fastify)
 web/              the publisher front end (React, Vite)
   src/            components and their tests
   public/_handout/design/   tokens.css, fonts, brand assets — served verbatim
+caddy/Caddyfile   the one proxy config, for the workbench and for a deployment
+Dockerfile        the service image
+compose.yaml      the operating stack: handout + postgres + caddy
 scripts/smoke.ts  the end-to-end check behind `npm run smoke`
 docs/             decisions that outlive a single story
 ```
@@ -117,3 +159,6 @@ docs/             decisions that outlive a single story
 - **Direct SQL, no ORM**, and only through the access layer in `service/src/publications/`.
   [`docs/database.md`](docs/database.md) has the schema and the two invariants it protects:
   the address part of a publication never changes, and an address is never reissued.
+- **Published content is a plain directory, deliberately with no storage abstraction.**
+  [`docs/data-directory.md`](docs/data-directory.md) has the layout and the resolution
+  rules that keep delivery inside a publication's own directory.

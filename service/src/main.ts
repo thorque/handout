@@ -41,7 +41,15 @@ async function checkDatabase(): Promise<boolean> {
   }
 }
 
-const app = buildApp(config, { checkDatabase });
+// The service cannot serve without the handouts directory (buildApp creates it): a
+// permission failure there ends the process the same way a failing migration does above.
+let app: ReturnType<typeof buildApp>;
+try {
+  app = buildApp(config, { checkDatabase });
+} catch (error) {
+  console.error('could not prepare the data directory, refusing to start:', error);
+  process.exit(1);
+}
 
 try {
   // 0.0.0.0, never 127.0.0.1 — a loopback-bound server is unreachable through the proxy.
