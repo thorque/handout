@@ -588,10 +588,10 @@ try {
       'the catch-all handle is not routed to {$APP_HOST',
     );
     // Split rather than written as one literal: service/test/vocabulary.test.ts hunts
-    // repository-wide for this old application prefix, and this source line would
+    // repository-wide for this old application path, and this source line would
     // otherwise trip its own grep.
-    const oldPrefix = '_' + 'handout';
-    assert(!caddyfile.includes(oldPrefix), `the Caddyfile still names the old ${oldPrefix} prefix`);
+    const oldPath = '/_' + 'handout';
+    assert(!caddyfile.includes(oldPath), `the Caddyfile still names the old ${oldPath} path`);
   });
 
   await check('proxy-handout', async () => {

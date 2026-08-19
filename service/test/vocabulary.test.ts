@@ -48,8 +48,13 @@ function gitLsFilesClean(pattern: RegExp): { clean: boolean; matches: string[] }
 
 describe('vocabulary', () => {
   it('never names the old application namespace — criterion 1', () => {
-    const { clean, output } = gitGrepClean(['-n', '_handout']);
-    expect(clean, `found "_handout" in tracked files:\n${output}`).toBe(true);
+    // Anchored on the path segment ("/_handout"), not the bare word: the old namespace
+    // only ever appeared as a path, and a bare "_handout" also matches
+    // "0001_handouts.sql" by coincidence (it ends in the plural of "handout"), which has
+    // nothing to do with the old namespace. Verified against main: every occurrence of
+    // "_handout" there carries the leading slash, so anchoring loses no real hit.
+    const { clean, output } = gitGrepClean(['-n', '/_handout']);
+    expect(clean, `found "/_handout" in tracked files:\n${output}`).toBe(true);
   });
 
   it('never says "publication" — criterion 4', () => {
