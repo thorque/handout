@@ -30,7 +30,7 @@ async function fetchStatus(): Promise<ServiceStatus> {
   try {
     // Relative path: the service is reached through this page's own origin.
     // See docs/url-namespace.md.
-    const response = await fetch('/_handout/api/health');
+    const response = await fetch('/api/health');
     if (!response.ok) return 'unreachable';
     const body = (await response.json()) as { status?: string };
     return body.status === 'ok' ? 'ok' : 'unreachable';

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 /** The one physical token file, the same one the browser gets. */
-export const TOKENS_CSS_PATH = path.resolve(here, '../../public/_handout/design/tokens.css');
+export const TOKENS_CSS_PATH = path.resolve(here, '../../public/design/tokens.css');
 
 export function readTokensCss(): string {
   return readFileSync(TOKENS_CSS_PATH, 'utf8');
