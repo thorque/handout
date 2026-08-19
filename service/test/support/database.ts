@@ -5,6 +5,9 @@
  * With no database configured at all the suites skip themselves (a fresh clone outside the
  * workbench stays runnable). A database that *is* configured but does not answer makes them
  * fail — a broken database must not hide behind a skip.
+ *
+ * In CI there is no fresh-clone excuse: the pipeline configures the database itself, so a
+ * missing one there is a broken pipeline and must fail instead of skip.
  */
 import { randomBytes } from 'node:crypto';
 import { Client, type Pool } from 'pg';
@@ -18,11 +21,23 @@ const rawUrl =
 export const DATABASE_URL: string | undefined = rawUrl === '' ? undefined : rawUrl;
 export const hasDatabase = DATABASE_URL !== undefined;
 
+/**
+ * A pipeline has no fresh-clone excuse: it configures the database itself, so a missing
+ * one is a broken pipeline, not a convenience — and a skip there would be a light that
+ * is always green. Anything but an empty value or an explicit negation counts as CI,
+ * because that is the shape the platforms set.
+ */
+const ci = process.env.CI;
+const REQUIRE_DATABASE = ci !== undefined && ci !== '' && ci !== 'false' && ci !== '0';
+
+const NO_DATABASE =
+  'No database configured: set HANDOUT_TEST_DATABASE_URL, DATABASE_URL or POSTGRES_URL.';
+
 if (!hasDatabase) {
-  console.warn(
-    'No database configured: set HANDOUT_TEST_DATABASE_URL, DATABASE_URL or POSTGRES_URL ' +
-      'to run the database suites. They are being skipped.',
-  );
+  if (REQUIRE_DATABASE) {
+    throw new Error(`${NO_DATABASE} In CI the database suites must run, never skip.`);
+  }
+  console.warn(`${NO_DATABASE} The database suites are being skipped.`);
 }
 
 /** A key of the right shape for the tests. Random per run, and never used on real data. */
