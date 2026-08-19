@@ -93,7 +93,7 @@ describe('isSlug', () => {
 
   it('agrees with the CHECK constraint on slug_reservations.slug', () => {
     const sql = readFileSync(
-      path.resolve(import.meta.dirname, '../migrations/0001_publications.sql'),
+      path.resolve(import.meta.dirname, '../migrations/0001_handouts.sql'),
       'utf8',
     );
     const match = /slug ~ '([^']+)'/.exec(sql);

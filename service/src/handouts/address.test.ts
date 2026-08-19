@@ -24,7 +24,7 @@ describe('addressFromPath', () => {
     });
   });
 
-  it('decodes without rejecting traversal-shaped segments — resolvePublicationFile does that', () => {
+  it('decodes without rejecting traversal-shaped segments — resolveHandoutFile does that', () => {
     expect(addressFromPath('/abcdefgh/%2e%2e/x')).toEqual({
       slug: 'abcdefgh',
       rest: ['..', 'x'],
@@ -36,7 +36,7 @@ describe('addressFromPath', () => {
   });
 
   it('gives undefined for anything that is not a valid address', () => {
-    for (const pathname of ['/', '/nope', '/_handout', '/ABCDEFGH', '/abcdefghi']) {
+    for (const pathname of ['/', '/nope', '/under_score', '/ABCDEFGH', '/abcdefghi']) {
       expect(addressFromPath(pathname), `expected undefined for "${pathname}"`).toBeUndefined();
     }
   });

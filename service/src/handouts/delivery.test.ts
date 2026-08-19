@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { resolvePublicationFile } from './delivery';
+import { resolveHandoutFile } from './delivery';
 
 let handoutsDir: string;
 let symlinksSupported = true;
@@ -37,73 +37,73 @@ afterAll(() => {
   rmSync(handoutsDir, { recursive: true, force: true });
 });
 
-describe('resolvePublicationFile', () => {
-  it('resolves the publication root to its index.html', async () => {
-    const resolved = await resolvePublicationFile(handoutsDir, 'aaaaaaaa', []);
+describe('resolveHandoutFile', () => {
+  it('resolves the handout root to its index.html', async () => {
+    const resolved = await resolveHandoutFile(handoutsDir, 'aaaaaaaa', []);
     expect(resolved?.realPath.endsWith(path.join('aaaaaaaa', 'index.html'))).toBe(true);
   });
 
   it('resolves a subdirectory to its own index.html', async () => {
-    const resolved = await resolvePublicationFile(handoutsDir, 'aaaaaaaa', ['sub']);
+    const resolved = await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['sub']);
     expect(resolved?.realPath.endsWith(path.join('sub', 'index.html'))).toBe(true);
   });
 
   it('resolves a plain file', async () => {
-    const resolved = await resolvePublicationFile(handoutsDir, 'aaaaaaaa', ['assets', 'app.js']);
+    const resolved = await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['assets', 'app.js']);
     expect(resolved?.realPath.endsWith(path.join('assets', 'app.js'))).toBe(true);
-    expect(resolved?.realPublicationDir.endsWith('aaaaaaaa')).toBe(true);
+    expect(resolved?.realHandoutDir.endsWith('aaaaaaaa')).toBe(true);
   });
 
   it('gives undefined for a slug with no directory', async () => {
-    expect(await resolvePublicationFile(handoutsDir, 'zzzzzzzz', [])).toBeUndefined();
+    expect(await resolveHandoutFile(handoutsDir, 'zzzzzzzz', [])).toBeUndefined();
   });
 
   it('gives undefined for a missing file', async () => {
-    expect(await resolvePublicationFile(handoutsDir, 'aaaaaaaa', ['missing.html'])).toBeUndefined();
+    expect(await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['missing.html'])).toBeUndefined();
   });
 
   it('gives undefined for a traversal attempt', async () => {
     expect(
-      await resolvePublicationFile(handoutsDir, 'aaaaaaaa', ['..', '..', 'etc', 'passwd']),
+      await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['..', '..', 'etc', 'passwd']),
     ).toBeUndefined();
   });
 
-  it('gives undefined for an escape into the neighbouring publication', async () => {
+  it('gives undefined for an escape into the neighbouring handout', async () => {
     expect(
-      await resolvePublicationFile(handoutsDir, 'aaaaaaaa', ['..', 'bbbbbbbb', 'index.html']),
+      await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['..', 'bbbbbbbb', 'index.html']),
     ).toBeUndefined();
   });
 
   it('gives undefined for a dotfile', async () => {
-    expect(await resolvePublicationFile(handoutsDir, 'aaaaaaaa', ['.env'])).toBeUndefined();
+    expect(await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['.env'])).toBeUndefined();
   });
 
   it('gives undefined for a directory with no index.html', async () => {
-    expect(await resolvePublicationFile(handoutsDir, 'aaaaaaaa', ['empty'])).toBeUndefined();
+    expect(await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['empty'])).toBeUndefined();
   });
 
   it.runIf(symlinksSupported)(
     'gives undefined for a symlink that escapes to an absolute path',
     async () => {
       expect(
-        await resolvePublicationFile(handoutsDir, 'aaaaaaaa', ['etc', 'passwd']),
+        await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['etc', 'passwd']),
       ).toBeUndefined();
     },
   );
 
   it.runIf(symlinksSupported)(
-    'gives undefined for a symlink that escapes into a sibling publication',
+    'gives undefined for a symlink that escapes into a sibling handout',
     async () => {
       expect(
-        await resolvePublicationFile(handoutsDir, 'aaaaaaaa', ['neighbour.html']),
+        await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['neighbour.html']),
       ).toBeUndefined();
     },
   );
 
   it.runIf(symlinksSupported)(
-    'still resolves a symlink that stays inside the publication',
+    'still resolves a symlink that stays inside the handout',
     async () => {
-      const resolved = await resolvePublicationFile(handoutsDir, 'aaaaaaaa', ['alias.html']);
+      const resolved = await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['alias.html']);
       expect(resolved?.realPath.endsWith(path.join('aaaaaaaa', 'index.html'))).toBe(true);
     },
   );

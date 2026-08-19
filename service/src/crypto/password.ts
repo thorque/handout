@@ -1,5 +1,5 @@
 /**
- * Publication passwords are encrypted, never hashed: the owner has to be able to look one
+ * Handout passwords are encrypted, never hashed: the owner has to be able to look one
  * up weeks after publishing, so the plaintext must stay recoverable. AES-256-GCM is
  * authenticated, so a tampered ciphertext fails to decrypt instead of returning garbage.
  */
@@ -20,7 +20,7 @@ export const ENVELOPE_PATTERN = /^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9
  * `v1.<base64url(iv)>.<base64url(authTag)>.<base64url(ciphertext)>`.
  *
  * The slug goes in as additional authenticated data, which binds the result to exactly one
- * publication: copying the column value to another row makes it undecryptable rather than
+ * handout: copying the column value to another row makes it undecryptable rather than
  * silently working. base64url keeps `+`, `/` and `=` out of a value that may pass through
  * URLs and logs.
  */
@@ -54,7 +54,7 @@ export function decryptPassword(envelope: string, key: Buffer, slug: string): st
     authTag === undefined ||
     ciphertext === undefined
   ) {
-    throw new Error(`malformed password envelope for publication "${slug}"`);
+    throw new Error(`malformed password envelope for handout "${slug}"`);
   }
 
   try {
@@ -69,6 +69,6 @@ export function decryptPassword(envelope: string, key: Buffer, slug: string): st
       decipher.final(),
     ]).toString('utf8');
   } catch {
-    throw new Error(`password for publication "${slug}" could not be decrypted`);
+    throw new Error(`password for handout "${slug}" could not be decrypted`);
   }
 }
