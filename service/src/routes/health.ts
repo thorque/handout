@@ -16,7 +16,7 @@ export interface HealthDeps {
   checkDatabase: () => Promise<boolean>;
 }
 
-/** Registered under the API prefix, so this resolves to `/_handout/api/health`. */
+/** Registered under the API prefix, so this resolves to `/api/health`. */
 export function healthRoutes(app: FastifyInstance, deps: HealthDeps): void {
   app.get('/health', async (_request, reply): Promise<HealthResponse> => {
     const databaseOk = await deps.checkDatabase();

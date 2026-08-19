@@ -1,11 +1,18 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { generateSlug, isSlug, SLUG_ALPHABET, SLUG_LENGTH, SLUG_PATTERN } from './slug';
+import {
+  generateSlug,
+  isSlug,
+  SLUG_ALPHABET,
+  SLUG_LENGTH,
+  SLUG_MIN_LENGTH,
+  SLUG_PATTERN,
+} from './slug';
 
 describe('SLUG_ALPHABET', () => {
   it('leaves out everything that could collide or be misread', () => {
-    // `_` would let a slug reach into the application's own /_handout/ namespace.
+    // `_` reads badly in a dictated or retyped address — legibility, not the namespace.
     expect(SLUG_ALPHABET).not.toContain('_');
     for (const excluded of ['0', '1', 'i', 'l', 'o']) {
       expect(SLUG_ALPHABET).not.toContain(excluded);
@@ -68,16 +75,20 @@ describe('isSlug', () => {
       'abcdefghi', // nine characters, above the maximum
       '', // empty
       'ABCDEF', // uppercase
-      'abcdef_g', // underscore — reserved for /_handout/
+      'abcdef_g', // underscore — not in the alphabet, kept out for legibility
       'abcdef0h', // '0' is not in the alphabet
       'abcdefoi', // 'o' and 'i' are confusables, not in the alphabet
       '..', // traversal-shaped
-      '_handout', // the reserved prefix itself
+      '_handout', // underscore again, and nine characters
       ' abcdef', // leading space
       'abcdef ', // trailing space
     ]) {
       expect(isSlug(value), `expected "${value}" to be rejected`).toBe(false);
     }
+  });
+
+  it('pins SLUG_PATTERN to the two length constants', () => {
+    expect(SLUG_PATTERN.source).toContain(`{${SLUG_MIN_LENGTH},${SLUG_LENGTH}}`);
   });
 
   it('agrees with the CHECK constraint on slug_reservations.slug', () => {

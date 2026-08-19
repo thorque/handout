@@ -6,10 +6,18 @@ import { randomInt } from 'node:crypto';
 
 /**
  * Lowercase only — a slug gets read aloud and retyped. `0`, `1` and the letters `i`, `l`
- * and `o` they are confused with are left out, and `_` is excluded because the application
- * owns the `/_handout/` namespace (see docs/url-namespace.md).
+ * and `o` they are confused with are left out, and `_` stays out too: it reads badly in a
+ * dictated or retyped address, so it is not taken back in even though the namespace no
+ * longer needs it excluded (see docs/url-namespace.md).
  */
 export const SLUG_ALPHABET = '23456789abcdefghjkmnpqrstuvwxyz';
+
+/**
+ * Six characters, the bottom of the six-to-eight range the brief permits. The lower bound
+ * the collision rule in `namespace.ts` is built on: a reserved word shorter than this can
+ * never be generated as a slug regardless of alphabet.
+ */
+export const SLUG_MIN_LENGTH = 6;
 
 /**
  * Eight characters, the top of the six-to-eight range the brief permits: 31⁸ ≈ 8.5·10¹¹

@@ -157,14 +157,14 @@ describe('publication delivery', () => {
   });
 
   it('keeps the API contract: a missing API route stays JSON', async () => {
-    const response = await app.inject({ method: 'GET', url: '/_handout/api/nope' });
+    const response = await app.inject({ method: 'GET', url: '/api/nope' });
 
     expect(response.statusCode).toBe(404);
     expect(response.headers['content-type']).toMatch(/^application\/json/);
   });
 
-  it('treats the reserved-prefix look-alike as publication space', async () => {
-    const response = await app.inject({ method: 'GET', url: '/_handoutx/api/health' });
+  it('treats a reserved-segment look-alike as handout space', async () => {
+    const response = await app.inject({ method: 'GET', url: '/apiiiii/health' });
 
     expect(response.statusCode).toBe(404);
     expect(response.headers['content-type']).toMatch(/^text\/html/);
