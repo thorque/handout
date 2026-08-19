@@ -111,4 +111,52 @@ describe.skipIf(!hasDatabase)('migrations', () => {
 
     await expect(database.pool.query('DELETE FROM slug_reservations')).rejects.toThrow(/permanent/);
   });
+
+  it('runs back down and up again — criterion 6', async () => {
+    const fresh = await createTestSchema();
+    try {
+      await runMigrations(fresh.config, quiet);
+
+      const down = await runMigrations(fresh.config, {
+        log: () => {},
+        direction: 'down',
+        count: 1,
+      });
+      expect(down).toHaveLength(1);
+
+      const { rows: afterDown } = await fresh.pool.query<{ table_name: string }>(
+        `SELECT table_name FROM information_schema.tables WHERE table_schema = $1`,
+        [fresh.schema],
+      );
+      const tableNames = afterDown.map((row) => row.table_name);
+      expect(tableNames).not.toContain('handouts');
+      expect(tableNames).not.toContain('slug_reservations');
+      expect(tableNames).toContain('pgmigrations');
+
+      await runMigrations(fresh.config, quiet);
+
+      const { rows: afterUp } = await fresh.pool.query<{ column_name: string }>(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_schema = $1 AND table_name = 'handouts' ORDER BY column_name`,
+        [fresh.schema],
+      );
+      expect(afterUp.map((row) => row.column_name)).toEqual([
+        'created_at',
+        'display_name',
+        'encrypted_password',
+        'id',
+        'last_accessed_at',
+        'owner_email',
+        'owner_subject',
+        'slug',
+        'updated_at',
+      ]);
+
+      // A row can be inserted through the same helper the other cases use — proof that the
+      // functions and triggers came back too, not just the bare tables.
+      await insertHandout(fresh, 'freshzzz');
+    } finally {
+      await fresh.drop();
+    }
+  });
 });
