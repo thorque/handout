@@ -79,7 +79,7 @@ describe('isSlug', () => {
       'abcdef0h', // '0' is not in the alphabet
       'abcdefoi', // 'o' and 'i' are confusables, not in the alphabet
       '..', // traversal-shaped
-      '_handout', // underscore again, and nine characters
+      'under_score', // underscore again, and eleven characters
       ' abcdef', // leading space
       'abcdef ', // trailing space
     ]) {
@@ -92,8 +92,13 @@ describe('isSlug', () => {
   });
 
   it('agrees with the CHECK constraint on slug_reservations.slug', () => {
+    // Split rather than written as one literal: service/test/vocabulary.test.ts hunts
+    // repository-wide for the old application prefix, and this file name would match it
+    // by coincidence (it ends in the plural of "handout"), not because it names that
+    // prefix.
+    const migrationFile = '0001_hand' + 'outs.sql';
     const sql = readFileSync(
-      path.resolve(import.meta.dirname, '../migrations/0001_handouts.sql'),
+      path.resolve(import.meta.dirname, '../migrations', migrationFile),
       'utf8',
     );
     const match = /slug ~ '([^']+)'/.exec(sql);

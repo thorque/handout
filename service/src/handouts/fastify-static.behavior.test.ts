@@ -6,13 +6,13 @@ import Fastify from 'fastify';
 import { afterAll, describe, expect, it } from 'vitest';
 
 /**
- * Behaviour of the library `resolvePublicationFile`/`publicationRoutes` build on. Measured
+ * Behaviour of the library `resolveHandoutFile`/`handoutRoutes` build on. Measured
  * once here, ahead of that code, so it is not an assumption: `serve: false` registers no
  * route of its own (`GET /` still reaches our handler), `reply.sendFile` sends the file
  * under the given root with a content type and length, a missing file gets the plugin's
  * own 404 (never our not-found page, because resolution already guarantees the file
  * exists), and it sets ETag/Last-Modified/Cache-Control by default (recorded in
- * docs/data-directory.md, policy left to HAN-21). `root` is not required with
+ * docs/data-directory.md). `root` is not required with
  * `serve: false` — not asserted here, checked once by hand while writing this file.
  */
 describe('@fastify/static with serve: false', () => {
@@ -71,7 +71,7 @@ describe('@fastify/static with serve: false', () => {
     const app = buildApp();
     const response = await app.inject({ method: 'GET', url: '/dotfile' });
     // Recorded, not asserted as desirable: our own dotfile rule runs first in
-    // resolvePublicationFile, so this path is never reached with a dotfile in practice.
+    // resolveHandoutFile, so this path is never reached with a dotfile in practice.
     expect(response.statusCode).toBe(200);
     await app.close();
   });
@@ -79,7 +79,7 @@ describe('@fastify/static with serve: false', () => {
   it('sets cache headers by default', async () => {
     const app = buildApp();
     const response = await app.inject({ method: 'GET', url: '/file' });
-    // Recorded for docs/data-directory.md — the policy is HAN-21's.
+    // Recorded for docs/data-directory.md.
     expect(response.headers['etag']).toBeDefined();
     expect(response.headers['last-modified']).toBeDefined();
     expect(response.headers['cache-control']).toBeDefined();

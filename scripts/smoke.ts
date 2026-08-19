@@ -587,7 +587,11 @@ try {
       /handle \{\s*reverse_proxy \{\$APP_HOST/.test(caddyfile),
       'the catch-all handle is not routed to {$APP_HOST',
     );
-    assert(!caddyfile.includes('_handout'), 'the Caddyfile still names the old _handout prefix');
+    // Split rather than written as one literal: service/test/vocabulary.test.ts hunts
+    // repository-wide for this old application prefix, and this source line would
+    // otherwise trip its own grep.
+    const oldPrefix = '_' + 'handout';
+    assert(!caddyfile.includes(oldPrefix), `the Caddyfile still names the old ${oldPrefix} prefix`);
   });
 
   await check('proxy-handout', async () => {
@@ -710,12 +714,7 @@ try {
     const port = proxyUrl.port === '' ? 80 : Number(proxyUrl.port);
     let status: number;
     try {
-      status = await statusWithHost(
-        port,
-        '/app/',
-        'handout-caddy.localhost',
-        proxyUrl.hostname,
-      );
+      status = await statusWithHost(port, '/app/', 'handout-caddy.localhost', proxyUrl.hostname);
     } catch (error) {
       const cause = error instanceof Error ? error.message : String(error);
       throw new Error(

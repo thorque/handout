@@ -1,9 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ImmutableFieldError } from '../src/handouts/errors';
-import {
-  createHandoutRepository,
-  type HandoutRepository,
-} from '../src/handouts/repository';
+import { createHandoutRepository, type HandoutRepository } from '../src/handouts/repository';
 import { createMigratedTestSchema, hasDatabase, type TestDatabase } from './support/database';
 
 describe.skipIf(!hasDatabase)('handout repository', () => {
@@ -80,10 +77,7 @@ describe.skipIf(!hasDatabase)('handout repository', () => {
     expect((await repository.getHandoutById(created.id))?.slug).toBe(created.slug);
 
     await expect(
-      database.pool.query('UPDATE handouts SET slug = $2 WHERE id = $1', [
-        created.id,
-        'aaaaaaaa',
-      ]),
+      database.pool.query('UPDATE handouts SET slug = $2 WHERE id = $1', [created.id, 'aaaaaaaa']),
     ).rejects.toThrow(/immutable/);
   });
 

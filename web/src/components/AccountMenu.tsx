@@ -47,8 +47,8 @@ export function initialsOf(name: string): string {
  * silently corrected. The chosen entry carries a check glyph, so it is not marked by colour
  * alone. All three stay tab stops — the design is silent on arrow keys.
  *
- * The mechanics behind the two actions are elsewhere: the theme is HAN-23's `ThemeProvider`,
- * and signing out is HAN-8's, reached through the `onSignOut` callback.
+ * The mechanics behind the two actions are elsewhere: the theme is `ThemeProvider`'s, and
+ * signing out is reached through the `onSignOut` callback.
  */
 export function AccountMenu({ name, email, onSignOut }: AccountMenuProps) {
   const { open, toggle, close, trigger, panel, onPanelKeyDown } = useDismissablePanel<

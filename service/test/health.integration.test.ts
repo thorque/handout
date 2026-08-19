@@ -62,10 +62,10 @@ describe('GET /api/health', () => {
     });
   });
 
-  it('leaves the root free for publication space', async () => {
+  it('leaves the root free for handout space', async () => {
     const response = await start(true).inject({ method: 'GET', url: '/' });
 
-    // Publication space, so it answers the plain not-found page, not the API's JSON —
+    // Handout space, so it answers the plain not-found page, not the API's JSON —
     // proof that the root is not the API, just as well as a JSON 404 would have been.
     expect(response.statusCode).toBe(404);
     expect(response.headers['content-type']).toMatch(/^text\/html/);

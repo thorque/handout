@@ -85,18 +85,14 @@ describe('resolveHandoutFile', () => {
   it.runIf(symlinksSupported)(
     'gives undefined for a symlink that escapes to an absolute path',
     async () => {
-      expect(
-        await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['etc', 'passwd']),
-      ).toBeUndefined();
+      expect(await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['etc', 'passwd'])).toBeUndefined();
     },
   );
 
   it.runIf(symlinksSupported)(
     'gives undefined for a symlink that escapes into a sibling handout',
     async () => {
-      expect(
-        await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['neighbour.html']),
-      ).toBeUndefined();
+      expect(await resolveHandoutFile(handoutsDir, 'aaaaaaaa', ['neighbour.html'])).toBeUndefined();
     },
   );
 

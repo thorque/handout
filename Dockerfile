@@ -25,6 +25,6 @@ EXPOSE 3000
 # The image has no curl; Node's own fetch is enough, and health reports the schema rather
 # than only an open socket.
 HEALTHCHECK --interval=5s --timeout=5s --retries=24 \
-  CMD node -e "fetch('http://127.0.0.1:3000/_handout/api/health').then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"
 
 CMD ["npm", "run", "start"]

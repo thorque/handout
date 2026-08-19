@@ -131,7 +131,7 @@ describe('PasswordReadout', () => {
   });
 
   it('says so when the clipboard refuses, and writes the password nowhere', async () => {
-    // The rule from CLAUDE.md: a publication password never reaches a log — and a rejected
+    // The rule from CLAUDE.md: a handout password never reaches a log — and a rejected
     // writeText carries the very string it was called with.
     const consoleSpies = (['log', 'info', 'warn', 'error', 'debug'] as const).map((method) =>
       vi.spyOn(console, method).mockImplementation(() => undefined),

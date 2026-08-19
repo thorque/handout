@@ -107,9 +107,7 @@ async function reserveSlug(client: PoolClient): Promise<string> {
   throw new SlugExhaustedError(SLUG_ATTEMPTS);
 }
 
-export function createHandoutRepository(
-  deps: HandoutRepositoryDeps,
-): HandoutRepository {
+export function createHandoutRepository(deps: HandoutRepositoryDeps): HandoutRepository {
   const { pool, passwordKey } = deps;
 
   async function findOne(where: string, value: string): Promise<Handout | null> {

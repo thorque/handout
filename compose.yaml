@@ -11,8 +11,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:?set it in .env}:${POSTGRES_PASSWORD:?set it in .env}@postgres:5432/${POSTGRES_DB:?set it in .env}
       HANDOUT_PASSWORD_KEY: ${HANDOUT_PASSWORD_KEY:?set it in .env, 32 bytes base64 — openssl rand -base64 32}
     volumes:
-      # One directory per publication lives in here, under `handouts/`. A volume, so a
-      # restart or a rebuild of the service keeps every published artifact — criterion 2.
+      # One directory per handout lives in here, under `handouts/`. A volume, so a
+      # restart or a rebuild of the service keeps every published artifact.
       - handout-data:/var/lib/handout
     depends_on:
       postgres:
@@ -29,11 +29,10 @@ services:
       APP_HOST: ${APP_HOST:?the compose service name of your app}
       APP_PORT: ${APP_PORT:?the port your app listens on}
       # Deviation from the catalog block: the one Caddyfile has a second upstream for
-      # /_handout/*, which the catalog block does not know about. In this story the service
-      # does not serve the built front end yet (that arrives with the story that does), so
-      # /_handout/** answers 404 in this stack until then — the one place it is knowingly
-      # incomplete.
-      WEB_HOST: ${WEB_HOST:?the compose service name that serves /_handout/*}
+      # /app/*, which the catalog block does not know about. The service does not serve
+      # the built front end yet, so /app/** answers 404 in this stack until it does — the
+      # one place it is knowingly incomplete.
+      WEB_HOST: ${WEB_HOST:?the compose service name that serves /app/*}
       WEB_PORT: ${WEB_PORT:?the port that service listens on}
     volumes:
       # The Caddyfile is a repo artifact, the same file the workbench mounts.
@@ -49,11 +48,10 @@ services:
       - '${HANDOUT_HTTP_PORT:-80}:${CADDY_SITE_PORT}'
     healthcheck:
       # Deviation from the catalog block, which probes `/`. In this application `/` is
-      # publication space and answers 404 by design, on which `wget` exits non-zero — the
-      # container would never become healthy. `/_handout/api/health` is always either 200
+      # handout space and answers 404 by design, on which `wget` exits non-zero — the
+      # container would never become healthy. `/api/health` is always either 200
       # (schema present) or 503 (degraded), never 404, so it is a real health probe instead.
-      test:
-        [CMD, wget, -q, -O, /dev/null, 'http://localhost:${CADDY_SITE_PORT}/_handout/api/health']
+      test: [CMD, wget, -q, -O, /dev/null, 'http://localhost:${CADDY_SITE_PORT}/api/health']
       interval: 5s
       timeout: 5s
       retries: 20

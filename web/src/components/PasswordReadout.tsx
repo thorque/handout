@@ -80,7 +80,7 @@ export function PasswordReadout({
       announce({ kind: 'copied', text: copiedLabel });
     } catch {
       // Deliberately no logging of any kind, not even the error: it was called with the
-      // password and a rejection can carry its argument. A publication password never
+      // password and a rejection can carry its argument. A handout password never
       // appears in a log (CLAUDE.md). The user is told instead of being left in silence.
       announce({
         kind: 'failed',

@@ -6,10 +6,9 @@ import path from 'node:path';
 import type { Config } from '../config';
 
 /**
- * The intermediate level between the data directory and a publication. Delivery looks
- * only under this directory, so nothing else that later lands directly under the data
- * directory (a staging area for unpacking, HAN-9/HAN-10) can ever become a reachable
- * address.
+ * The intermediate level between the data directory and a handout. Delivery looks only
+ * under this directory, so nothing else that later lands directly under the data
+ * directory (a staging area for unpacking) can ever become a reachable address.
  */
 export const HANDOUTS_SUBDIR = 'handouts';
 

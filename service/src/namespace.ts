@@ -29,7 +29,9 @@ export function isReservedPath(pathname: string): boolean {
  * collidable just because it happens to fall inside the new range.
  */
 export function cannotBeSlug(segment: string): boolean {
-  return (
-    segment.length < SLUG_MIN_LENGTH || [...segment].some((c) => !SLUG_ALPHABET.includes(c))
-  );
+  if (segment.length < SLUG_MIN_LENGTH) return true;
+  for (let index = 0; index < segment.length; index += 1) {
+    if (!SLUG_ALPHABET.includes(segment[index] ?? '')) return true;
+  }
+  return false;
 }

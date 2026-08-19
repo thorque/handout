@@ -1,7 +1,8 @@
 /**
  * The one place where an address becomes a slug. It takes a pathname and nothing else: no
- * `Host`, no base domain, no mode — a pathname on the instance's one hostname is the whole
- * truth, per ADR 0001. Nothing else in the service may decide this.
+ * `Host` header, no second hostname to weigh in, no mode to branch on — a pathname on the
+ * instance's one hostname is the whole truth, per ADR 0001. Nothing else in the service
+ * may decide this.
  */
 import { isSlug } from '../slug';
 

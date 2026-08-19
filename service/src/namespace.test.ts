@@ -18,14 +18,7 @@ describe('isReservedPath', () => {
 
   it('is false for handout space, including look-alikes', () => {
     // /appleee, /apiiiii… are exactly what a bare startsWith would get wrong.
-    for (const pathname of [
-      '/',
-      '/appleee',
-      '/apiiiii',
-      '/unlockable',
-      '/abcdefgh',
-      '/x/app/y',
-    ]) {
+    for (const pathname of ['/', '/appleee', '/apiiiii', '/unlockable', '/abcdefgh', '/x/app/y']) {
       expect(isReservedPath(pathname), `expected false for "${pathname}"`).toBe(false);
     }
   });

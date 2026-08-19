@@ -7,9 +7,7 @@ type ServiceStatus = 'checking' | 'ok' | 'unreachable';
 /**
  * The start page's primary action, standing in the frame's action slot.
  *
- * It carries no behaviour yet: creating a publication is the upload story of epic HAN-2,
- * and it fills exactly this button. There is deliberately no `onClick` — a no-op would let
- * the button pretend to work.
+ * There is deliberately no `onClick` — a no-op would let the button pretend to work.
  */
 export function NewHandoutAction() {
   return (

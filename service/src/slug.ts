@@ -1,5 +1,5 @@
 /**
- * The address part of a publication. Random only: never derived from the display name, so
+ * The address part of a handout. Random only: never derived from the display name, so
  * a name can never be read back out of a link, and never reissued after a deletion.
  */
 import { randomInt } from 'node:crypto';
@@ -39,8 +39,8 @@ export function generateSlug(): string {
 
 /**
  * The shape a valid address part has: six to eight characters from {@link SLUG_ALPHABET}.
- * Character-for-character the CHECK constraint on `slug_reservations.slug` in
- * `service/migrations/0001_handouts.sql` — a test pins the two together.
+ * Character-for-character the CHECK constraint on `slug_reservations.slug` in the up
+ * migration for the `handouts` table — a test pins the two together.
  */
 export const SLUG_PATTERN = /^[23456789abcdefghjkmnpqrstuvwxyz]{6,8}$/;
 
