@@ -46,7 +46,6 @@ jobs:
       # 127.0.0.1 and not localhost: the published port is bound on IPv4, and localhost
       # can resolve to ::1 first. The tests create a schema of their own in this
       # database, so an empty one is all it has to be.
-      HANDOUT_TEST_DATABASE_URL: postgresql://handout:handout@127.0.0.1:5432/handout_test
       # The runner sets this itself. Restated here because the test support reads it to
       # decide that a missing database is a failure rather than a skip — so the
       # dependency is visible in the file that relies on it.
