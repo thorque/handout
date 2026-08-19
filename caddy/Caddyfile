@@ -14,32 +14,30 @@
 
 # No domain name in the site address, on purpose: with one, Caddy would try to obtain a TLS
 # certificate and fail. The port has to match the caddy service's port/httpPort (81 here).
-# Certificate behaviour is not armed in this story — HAN-22 adds the endpoint Caddy has to ask
-# before it may issue a certificate per publication host.
+# There is no certificate ask-endpoint: one instance answers under one hostname, so a
+# deployment's site address carries that one hostname and Caddy obtains one ordinary
+# certificate for it.
 :{$CADDY_SITE_PORT:81} {
-	# The application: its own routes, its assets, and the API. In the workbench that is the
-	# Vite dev server, which proxies /_handout/api to the service itself; in a deployment
-	# WEB_HOST/WEB_PORT point at the service, which serves the built app.
-	handle /_handout/* {
+	# The application: its own routes and its built assets, including the design layer below
+	# them. In the workbench that is the Vite dev server; in a deployment WEB_HOST/WEB_PORT
+	# point at the service, which serves the built app. A trailing `*` would also match
+	# `/appleee`, a legal handout address — so this matcher lists the exact segment and the
+	# segment with a slash instead.
+	@app path /app /app/*
+	handle @app {
 		reverse_proxy {$WEB_HOST:workspace}:{$WEB_PORT:5173}
 	}
 
-	# Workbench only, and inert anywhere else. The Vite dev server serves its own client, the
-	# application's modules and its pre-bundled dependencies from paths outside /_handout/
-	# (measured: /@vite/client, /@react-refresh, /src/**, /node_modules/.vite/deps/**), so
-	# without this the shell would load through the proxy and every module behind it would
-	# 404 — a white page. None of these first segments can ever be a publication address:
-	# `src` is too short for a slug, `node_modules` contains `_`, and `@` is not in the slug
-	# alphabet. In a deployment WEB_HOST is the service, which answers these paths exactly as
-	# the catch-all below would, so this block changes nothing there.
-	# The permanent fix is Vite's `base` becoming `/_handout/`, which is the open item in
-	# docs/url-namespace.md and belongs to the story that serves the built front end.
-	@vite-dev path /@* /src/* /node_modules/*
-	handle @vite-dev {
-		reverse_proxy {$WEB_HOST:workspace}:{$WEB_PORT:5173}
+	# The HTTP interface. Goes straight to the service rather than through the dev server: in
+	# a deployment WEB_HOST is the service anyway, and the browser sees one origin either way
+	# because Caddy is the origin. The Vite proxy for /api stays, so a direct visit to the dev
+	# server's own port keeps working.
+	@api path /api /api/*
+	handle @api {
+		reverse_proxy {$APP_HOST:workspace}:{$APP_PORT:3000}
 	}
 
-	# Everything else is publication space and belongs to the service.
+	# Everything else is handout space and belongs to the service.
 	handle {
 		reverse_proxy {$APP_HOST:workspace}:{$APP_PORT:3000}
 	}
