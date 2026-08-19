@@ -117,10 +117,12 @@ The repository is one npm project with two workspaces: `service/` (Fastify) and 
 | `npm run lint` / `npm run lint:fix`       | oxlint, type-aware, warnings are errors                  |
 | `npm run format` / `npm run format:check` | Prettier                                                 |
 | `npm run smoke`                           | end-to-end check against the two running servers         |
+| `npm run check`                           | everything in `verify` that needs no running server      |
 | `npm run verify`                          | the gate: lint → format:check → typecheck → test → smoke |
 
 `npm run verify` needs both servers running (`monoceros-ctl start handout-app`), because
-`smoke` talks to them over the network.
+`smoke` talks to them over the network. A pull request runs `npm run check` on GitHub;
+`verify` stays the local gate.
 
 TypeScript 7 with oxlint (`oxlint-tsgolint`) for type-aware linting; `typescript-eslint`
 is deliberately not used, it would pin the project to TypeScript 5.x. `baseUrl` and

@@ -110,9 +110,18 @@ the data layout the `handout-data` volume holds.
 | `npm run format`       | Prettier, writing                                                  |
 | `npm run format:check` | Prettier, checking only                                            |
 | `npm run smoke`        | checks the two running servers end to end (they must be up)        |
+| `npm run check`        | everything in `verify` that needs no running server — what CI runs |
 | `npm run verify`       | lint → format:check → typecheck → test → smoke                     |
 
 `npm run verify` is the gate: it is what a change has to pass before it is proposed.
+
+### What runs on a pull request
+
+Every pull request against `main`, and every push to `main`, runs `npm run check` in
+GitHub Actions (`.github/workflows/checks.yml`). Not `smoke`: that needs the service, Vite
+and Caddy up at once, which the pipeline does not bring up. The workflow starts a Postgres
+service container and points the database suites at it, so a database that is missing —
+rather than one that fails — cannot leave them skipped behind a green run.
 
 ## Layout
 
@@ -125,6 +134,7 @@ web/              the publisher front end (React, Vite)
   src/            components and their tests
   public/design/   tokens.css, fonts, brand assets — served verbatim, under /app/
 caddy/Caddyfile   the one proxy config, for the workbench and for a deployment
+.github/workflows/  the checks every pull request has to pass
 Dockerfile        the service image
 compose.yaml      the operating stack: handout + postgres + caddy
 scripts/smoke.ts  the end-to-end check behind `npm run smoke`

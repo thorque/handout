@@ -21,7 +21,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "smoke": "tsx scripts/smoke.ts",
-    "verify": "npm run lint && npm run format:check && npm run typecheck && npm run test && npm run smoke"
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run test",
+    "verify": "npm run check && npm run smoke"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
