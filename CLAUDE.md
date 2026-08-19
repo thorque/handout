@@ -30,7 +30,7 @@ changing anything it touches.
 
 ## Decisions that are easy to get wrong
 
-- **Replace overwrites.** There is exactly one version per publication — no previous
+- **Replace overwrites.** There is exactly one version per handout — no previous
   version, no timeline, no address for earlier states. A bad upload is fixed by exporting
   again from the agent and replacing again.
 - **The password is encrypted, not hashed.** It has to stay retrievable so the owner can
@@ -42,24 +42,23 @@ changing anything it touches.
   resolve to someone else's content later.
 - **Display name and address are separate.** Renaming must never change the address.
 - **The password page belongs to the application**, under the instance domain, not to the
-  publication. Redirect with a validated target, return with a short-lived one-time token,
-  session scoped to that single publication. Never a cookie on the parent domain.
+  handout. Redirect with a validated target, return with a short-lived one-time token,
+  session scoped to that single handout. Never a cookie on the parent domain.
 - **Design tokens must work without React**, because the password page is server-rendered
-  and needs the same look as the app. One file at `/_handout/design/tokens.css` for both
+  and needs the same look as the app. One file at `/app/design/tokens.css` for both
   consumers; see `docs/design-system.md`.
 - **One identity provider per instance.** No provider picker, no provider-specific code
   paths — issuer URL, client ID and secret are the whole configuration.
-- **Never touch the delivered artifact.** Absolute paths in path mode produce a warning at
-  publish time and nothing else.
+- **Never touch the delivered artifact.** An absolute path in the upload produces a
+  warning at publish time and nothing else.
 - **Published content lives at `<dataDir>/handouts/<slug>/`**, one directory per
-  publication. Delivery looks only there, and there is no storage abstraction — see
+  handout. Delivery looks only there, and there is no storage abstraction — see
   `docs/data-directory.md`.
 - **There is exactly one Caddyfile**, at `caddy/Caddyfile`, for the workbench and for a
   deployment alike — see `docs/proxy.md`.
-- **The application owns `/_handout/`, everything else at the root is publication space.**
-  API, app routes, the password page and the built assets all live under that prefix; a
-  generated slug must never be able to produce it, so the slug alphabet excludes `_`. See
-  `docs/url-namespace.md`.
+- **The application owns three reserved path segments — `/app`, `/api`, `/unlock`.**
+  Everything else at the root is handout space; a generated slug can never produce any of
+  the three, by construction. See `docs/url-namespace.md`.
 
 ## Conventions
 
@@ -99,9 +98,9 @@ workspace briefing at `../../AGENTS.md`. The parts specific to this project:
 - Service on port 3000 (`http://handout.localhost`), Vite dev server on 5173.
 - Start and stop servers with `monoceros-ctl start|stop|logs handout-app`, never from a
   shell of your own.
-- Local development runs in **path mode**: the workbench routes `handout.localhost` but no
-  level below it, so a subdomain per publication cannot be reproduced here. The redirect
-  flow of the password page still has to be reasoned about against subdomain mode.
+- The workbench routes `handout.localhost` at the root, so every handout is served under a
+  path on it — the only way an address is ever resolved, in the workbench and in a
+  deployment alike.
 - Keycloak is the local OIDC provider. Its realm is a file in the repository at
   `keycloak/realm.json`; apply changes to the running instance with
   `.monoceros/bin/keycloak-realm` from the workspace root.

@@ -25,7 +25,7 @@ const config = loadConfig({
   HANDOUT_DATA_DIR: dataDir,
 });
 
-describe('GET /_handout/api/health', () => {
+describe('GET /api/health', () => {
   let app: FastifyInstance;
 
   function start(databaseOk: boolean): FastifyInstance {
@@ -38,7 +38,7 @@ describe('GET /_handout/api/health', () => {
   });
 
   it('answers with the service status', async () => {
-    const response = await start(true).inject({ method: 'GET', url: '/_handout/api/health' });
+    const response = await start(true).inject({ method: 'GET', url: '/api/health' });
 
     expect(response.statusCode).toBe(200);
     expect(response.headers['content-type']).toMatch(/^application\/json/);
@@ -51,7 +51,7 @@ describe('GET /_handout/api/health', () => {
   });
 
   it('reports a service without its database as degraded', async () => {
-    const response = await start(false).inject({ method: 'GET', url: '/_handout/api/health' });
+    const response = await start(false).inject({ method: 'GET', url: '/api/health' });
 
     expect(response.statusCode).toBe(503);
     expect(response.json()).toEqual({
@@ -62,19 +62,19 @@ describe('GET /_handout/api/health', () => {
     });
   });
 
-  it('leaves the root free for publication space', async () => {
+  it('leaves the root free for handout space', async () => {
     const response = await start(true).inject({ method: 'GET', url: '/' });
 
-    // Publication space, so it answers the plain not-found page, not the API's JSON —
+    // Handout space, so it answers the plain not-found page, not the API's JSON —
     // proof that the root is not the API, just as well as a JSON 404 would have been.
     expect(response.statusCode).toBe(404);
     expect(response.headers['content-type']).toMatch(/^text\/html/);
   });
 
   it('matches the reserved prefix as a whole path segment', async () => {
-    const response = await start(true).inject({ method: 'GET', url: '/_handoutx/api/health' });
+    const response = await start(true).inject({ method: 'GET', url: '/apiiiii/health' });
 
-    // /_handoutx/... is publication space, not the look-alike prefix it appears to be.
+    // /apiiiii/... is handout space, not the look-alike segment it appears to be.
     expect(response.statusCode).toBe(404);
     expect(response.headers['content-type']).toMatch(/^text\/html/);
   });

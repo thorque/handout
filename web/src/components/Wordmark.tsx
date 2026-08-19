@@ -17,7 +17,7 @@ export interface WordmarkProps {
 /**
  * The brand lockup, inline rather than an <img>, so the frame follows `currentColor` and
  * the accent square follows `--ho-accent` — both live, in whichever theme is on screen.
- * The standalone files under /_handout/design/brand/ are the same geometry for consumers
+ * The standalone files under /app/design/brand/ are the same geometry for consumers
  * that reference a logo by URL.
  *
  * One accepted rounding in the header size: the frame stroke scales with the drawing to

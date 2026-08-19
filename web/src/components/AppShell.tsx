@@ -6,7 +6,7 @@ import styles from './AppShell.module.css';
 export interface AppShellProps {
   /** Who is signed in. Without one there is no profile mark — a page without a session. */
   user?: { name: string; email: string };
-  /** The mechanics are HAN-8's; the menu entry only calls this. */
+  /** The menu entry only calls this. */
   onSignOut?: () => void;
   /** The primary action of the view standing in the frame, right of the wordmark. */
   action?: ReactNode;
@@ -28,8 +28,8 @@ function doNothing(): void {
  * `TextLink` is not its replacement, and inside `components/` the raw element is allowed.
  *
  * The recipient password page does **not** get this frame: nobody is signed in there. That
- * is HAN-20's obligation, and it holds by construction — this is a React component mounted
- * only at the application root, and that page loads no module at all.
+ * holds by construction — this is a React component mounted only at the application root,
+ * and that page loads no module at all.
  */
 export function AppShell({ user, onSignOut = doNothing, action, children }: AppShellProps) {
   return (

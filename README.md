@@ -24,7 +24,7 @@ npm run dev:web       # http://localhost:5173
 ```
 
 The service applies its migrations at start and refuses to start when they fail — it never
-serves without its schema. `/_handout/api/health` reports the database, and answers 503
+serves without its schema. `/api/health` reports the database, and answers 503
 with `"status": "degraded"` when the schema is not there.
 
 ## Configuration
@@ -38,9 +38,9 @@ Everything is read from the environment; `.env` is loaded for local development.
 | `HANDOUT_DATA_DIR`        | where content lives: `<HANDOUT_DATA_DIR>/handouts/<slug>/`, absolute (default `<repo>/var/data`) |
 | `DATABASE_URL`            | the database; falls back to `POSTGRES_URL`, which the workbench provides                         |
 | `HANDOUT_DATABASE_SCHEMA` | the schema migrations and queries work in, default `public`                                      |
-| `HANDOUT_PASSWORD_KEY`    | **required**, 32 bytes base64 — encrypts publication passwords                                   |
+| `HANDOUT_PASSWORD_KEY`    | **required**, 32 bytes base64 — encrypts handout passwords                                       |
 
-`HANDOUT_PASSWORD_KEY` has no default and no fallback: publication passwords have to stay
+`HANDOUT_PASSWORD_KEY` has no default and no fallback: handout passwords have to stay
 readable for their owner, so they are encrypted rather than hashed, and losing the key
 loses every password. Generate one with `openssl rand -base64 32`, keep it out of every
 tracked file, and put it in the backup plan. See [`docs/database.md`](docs/database.md).
@@ -60,7 +60,7 @@ Inside the Monoceros workbench both servers are started together with
 <http://handout.localhost> (service) and <http://handout-5173.localhost> (front end).
 
 The front end talks to the service through its own origin under a relative path: the Vite
-dev server proxies `/_handout/api` to the service, so the browser only ever sees one
+dev server proxies `/api` to the service, so the browser only ever sees one
 origin.
 
 ## The proxy in front
@@ -123,7 +123,7 @@ service/          the HTTP service (Fastify)
   test/           integration tests, driven through Fastify's app.inject()
 web/              the publisher front end (React, Vite)
   src/            components and their tests
-  public/_handout/design/   tokens.css, fonts, brand assets — served verbatim
+  public/design/   tokens.css, fonts, brand assets — served verbatim, under /app/
 caddy/Caddyfile   the one proxy config, for the workbench and for a deployment
 Dockerfile        the service image
 compose.yaml      the operating stack: handout + postgres + caddy
@@ -149,16 +149,16 @@ docs/             decisions that outlive a single story
 - **`moduleResolution` is `bundler`** because nothing is emitted yet: `tsx` runs the
   service and Vite builds the front end, so relative imports stay extensionless. This has
   to be revisited when the service gets a real build.
-- **The application owns the `/_handout/` path namespace**, everything else at the root is
-  publication space. Read [`docs/url-namespace.md`](docs/url-namespace.md) before adding a
-  route.
+- **The application owns three reserved path segments — `/app`, `/api`, `/unlock`** —
+  everything else at the root is handout space. Read
+  [`docs/url-namespace.md`](docs/url-namespace.md) before adding a route.
 - **Colours, spacings, radii and states come from design tokens**, from the one
   `tokens.css` both the application and a page without React link.
   [`docs/design-system.md`](docs/design-system.md) has the theme resolution, the token-only
   rule and the contrast table, each with the test that enforces it.
-- **Direct SQL, no ORM**, and only through the access layer in `service/src/publications/`.
+- **Direct SQL, no ORM**, and only through the access layer in `service/src/handouts/`.
   [`docs/database.md`](docs/database.md) has the schema and the two invariants it protects:
-  the address part of a publication never changes, and an address is never reissued.
+  the address part of a handout never changes, and an address is never reissued.
 - **Published content is a plain directory, deliberately with no storage abstraction.**
   [`docs/data-directory.md`](docs/data-directory.md) has the layout and the resolution
-  rules that keep delivery inside a publication's own directory.
+  rules that keep delivery inside a handout's own directory.

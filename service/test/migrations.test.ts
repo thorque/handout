@@ -4,18 +4,18 @@ import { createTestSchema, hasDatabase, type TestDatabase } from './support/data
 
 const quiet = { log: () => {} };
 
-/** A publication row needs a reservation first; this is the shortest valid pair. */
-async function insertPublication(
+/** A handout row needs a reservation first; this is the shortest valid pair. */
+async function insertHandout(
   database: TestDatabase,
   slug: string,
   columns: Record<string, unknown> = {},
 ): Promise<void> {
   await database.pool.query('INSERT INTO slug_reservations (slug) VALUES ($1)', [slug]);
   const names = ['slug', 'display_name', 'owner_subject', ...Object.keys(columns)];
-  const values = [slug, 'A publication', 'subject-1', ...Object.values(columns)];
+  const values = [slug, 'A handout', 'subject-1', ...Object.values(columns)];
   const placeholders = values.map((_, index) => `$${index + 1}`).join(', ');
   await database.pool.query(
-    `INSERT INTO publications (${names.join(', ')}) VALUES (${placeholders})`,
+    `INSERT INTO handouts (${names.join(', ')}) VALUES (${placeholders})`,
     values,
   );
 }
@@ -42,7 +42,7 @@ describe.skipIf(!hasDatabase)('migrations', () => {
       rows.filter((row) => row.table_name === table).map((row) => row.column_name);
 
     expect(columnsOf('slug_reservations')).toEqual(['reserved_at', 'slug']);
-    expect(columnsOf('publications')).toEqual([
+    expect(columnsOf('handouts')).toEqual([
       'created_at',
       'display_name',
       'encrypted_password',
@@ -78,7 +78,7 @@ describe.skipIf(!hasDatabase)('migrations', () => {
   });
 
   it('rejects a slug outside the alphabet', async () => {
-    // `_` in particular: it would let a slug reach into the application's /_handout/ space.
+    // `_` in particular: it stays out of the alphabet for legibility, not for the namespace.
     await expect(
       database.pool.query("INSERT INTO slug_reservations (slug) VALUES ('ab_cde')"),
     ).rejects.toThrow(/check constraint/);
@@ -92,16 +92,16 @@ describe.skipIf(!hasDatabase)('migrations', () => {
 
   it('rejects a password hash in the ciphertext column', async () => {
     await expect(
-      insertPublication(database, 'hashtest', {
+      insertHandout(database, 'hashtest', {
         encrypted_password: '$2b$12$abcdefghijklmnopqrstuv',
       }),
     ).rejects.toThrow(/check constraint/);
   });
 
-  it('rejects a publication whose slug was never reserved', async () => {
+  it('rejects a handout whose slug was never reserved', async () => {
     await expect(
       database.pool.query(
-        "INSERT INTO publications (slug, display_name, owner_subject) VALUES ('zzzzzzzz', 'x', 's')",
+        "INSERT INTO handouts (slug, display_name, owner_subject) VALUES ('zzzzzzzz', 'x', 's')",
       ),
     ).rejects.toThrow(/foreign key constraint/);
   });
@@ -110,5 +110,53 @@ describe.skipIf(!hasDatabase)('migrations', () => {
     await database.pool.query("INSERT INTO slug_reservations (slug) VALUES ('keepthem')");
 
     await expect(database.pool.query('DELETE FROM slug_reservations')).rejects.toThrow(/permanent/);
+  });
+
+  it('runs back down and up again — criterion 6', async () => {
+    const fresh = await createTestSchema();
+    try {
+      await runMigrations(fresh.config, quiet);
+
+      const down = await runMigrations(fresh.config, {
+        log: () => {},
+        direction: 'down',
+        count: 1,
+      });
+      expect(down).toHaveLength(1);
+
+      const { rows: afterDown } = await fresh.pool.query<{ table_name: string }>(
+        `SELECT table_name FROM information_schema.tables WHERE table_schema = $1`,
+        [fresh.schema],
+      );
+      const tableNames = afterDown.map((row) => row.table_name);
+      expect(tableNames).not.toContain('handouts');
+      expect(tableNames).not.toContain('slug_reservations');
+      expect(tableNames).toContain('pgmigrations');
+
+      await runMigrations(fresh.config, quiet);
+
+      const { rows: afterUp } = await fresh.pool.query<{ column_name: string }>(
+        `SELECT column_name FROM information_schema.columns
+         WHERE table_schema = $1 AND table_name = 'handouts' ORDER BY column_name`,
+        [fresh.schema],
+      );
+      expect(afterUp.map((row) => row.column_name)).toEqual([
+        'created_at',
+        'display_name',
+        'encrypted_password',
+        'id',
+        'last_accessed_at',
+        'owner_email',
+        'owner_subject',
+        'slug',
+        'updated_at',
+      ]);
+
+      // A row can be inserted through the same helper the other cases use — proof that the
+      // functions and triggers came back too, not just the bare tables.
+      await insertHandout(fresh, 'freshzzz');
+    } finally {
+      await fresh.drop();
+    }
   });
 });

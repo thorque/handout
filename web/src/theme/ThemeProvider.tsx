@@ -13,7 +13,7 @@ import {
  *
  * It does not paint: all painting is CSS, keyed on the `data-theme` attribute and on
  * `prefers-color-scheme`. The provider only sets or removes that attribute, and the first
- * paint is already correct because /_handout/design/theme-init.js ran before React.
+ * paint is already correct because /app/design/theme-init.js ran before React.
  *
  * Storage and matchMedia are both guarded: local storage throws on an opaque origin and
  * in private mode, and a server-rendered or test environment may have no matchMedia at

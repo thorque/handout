@@ -1,7 +1,7 @@
 /**
- * The one narrow way into the publication tables. Everything the application knows about a
- * publication without reading its files comes from here, and nothing outside this module
- * writes SQL against `publications` or `slug_reservations`.
+ * The one narrow way into the handout tables. Everything the application knows about a
+ * handout without reading its files comes from here, and nothing outside this module
+ * writes SQL against `handouts` or `slug_reservations`.
  */
 import type { Pool, PoolClient } from 'pg';
 import { decryptPassword, encryptPassword } from '../crypto/password';
@@ -11,9 +11,9 @@ import { ImmutableFieldError, SlugExhaustedError } from './errors';
 /**
  * The read model. It carries neither the plaintext nor the ciphertext of the password —
  * only whether there is one. The plaintext is reachable through exactly one function,
- * {@link PublicationRepository.readPublicationPassword}.
+ * {@link HandoutRepository.readHandoutPassword}.
  */
-export interface Publication {
+export interface Handout {
   id: string;
   slug: string;
   displayName: string;
@@ -25,7 +25,7 @@ export interface Publication {
   lastAccessedAt: Date | null;
 }
 
-export interface CreatePublicationInput {
+export interface CreateHandoutInput {
   displayName: string;
   ownerSubject: string;
   ownerEmail?: string | null;
@@ -36,29 +36,29 @@ export interface CreatePublicationInput {
  * `password` is three-valued: absent leaves it as it is, `null` removes the protection, a
  * string replaces it. `slug` is absent by design — it is immutable.
  */
-export interface UpdatePublicationPatch {
+export interface UpdateHandoutPatch {
   displayName?: string;
   ownerEmail?: string | null;
   password?: string | null;
 }
 
-export interface PublicationRepository {
-  createPublication: (input: CreatePublicationInput) => Promise<Publication>;
-  getPublicationById: (id: string) => Promise<Publication | null>;
-  getPublicationBySlug: (slug: string) => Promise<Publication | null>;
-  listPublicationsByOwner: (ownerSubject: string) => Promise<Publication[]>;
-  updatePublication: (id: string, patch: UpdatePublicationPatch) => Promise<Publication>;
-  deletePublication: (id: string) => Promise<boolean>;
+export interface HandoutRepository {
+  createHandout: (input: CreateHandoutInput) => Promise<Handout>;
+  getHandoutById: (id: string) => Promise<Handout | null>;
+  getHandoutBySlug: (slug: string) => Promise<Handout | null>;
+  listHandoutsByOwner: (ownerSubject: string) => Promise<Handout[]>;
+  updateHandout: (id: string, patch: UpdateHandoutPatch) => Promise<Handout>;
+  deleteHandout: (id: string) => Promise<boolean>;
   touchLastAccessed: (slug: string, at?: Date) => Promise<void>;
-  readPublicationPassword: (id: string) => Promise<string | null>;
+  readHandoutPassword: (id: string) => Promise<string | null>;
 }
 
-export interface PublicationRepositoryDeps {
+export interface HandoutRepositoryDeps {
   pool: Pool;
   passwordKey: Buffer;
 }
 
-interface PublicationRow {
+interface HandoutRow {
   id: string;
   slug: string;
   display_name: string;
@@ -80,7 +80,7 @@ const COLUMNS = `id, slug, display_name, owner_subject, owner_email,
 /** How often a fresh slug is drawn before giving up. A collision is already improbable. */
 const SLUG_ATTEMPTS = 8;
 
-function toPublication(row: PublicationRow): Publication {
+function toHandout(row: HandoutRow): Handout {
   return {
     id: row.id,
     slug: row.slug,
@@ -107,26 +107,24 @@ async function reserveSlug(client: PoolClient): Promise<string> {
   throw new SlugExhaustedError(SLUG_ATTEMPTS);
 }
 
-export function createPublicationRepository(
-  deps: PublicationRepositoryDeps,
-): PublicationRepository {
+export function createHandoutRepository(deps: HandoutRepositoryDeps): HandoutRepository {
   const { pool, passwordKey } = deps;
 
-  async function findOne(where: string, value: string): Promise<Publication | null> {
-    const result = await pool.query<PublicationRow>(
-      `SELECT ${COLUMNS} FROM publications WHERE ${where} = $1`,
+  async function findOne(where: string, value: string): Promise<Handout | null> {
+    const result = await pool.query<HandoutRow>(
+      `SELECT ${COLUMNS} FROM handouts WHERE ${where} = $1`,
       [value],
     );
     const row = result.rows[0];
-    return row === undefined ? null : toPublication(row);
+    return row === undefined ? null : toHandout(row);
   }
 
   return {
     /**
-     * Reservation and publication are inserted in one transaction: a publication can never
+     * Reservation and handout are inserted in one transaction: a handout can never
      * exist without its reservation, and a slug that was never handed out may be drawn again.
      */
-    async createPublication(input) {
+    async createHandout(input) {
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
@@ -135,15 +133,15 @@ export function createPublicationRepository(
           input.password === undefined || input.password === null
             ? null
             : encryptPassword(input.password, passwordKey, slug);
-        const result = await client.query<PublicationRow>(
-          `INSERT INTO publications (slug, display_name, owner_subject, owner_email, encrypted_password)
+        const result = await client.query<HandoutRow>(
+          `INSERT INTO handouts (slug, display_name, owner_subject, owner_email, encrypted_password)
            VALUES ($1, $2, $3, $4, $5) RETURNING ${COLUMNS}`,
           [slug, input.displayName, input.ownerSubject, input.ownerEmail ?? null, encrypted],
         );
         await client.query('COMMIT');
         const row = result.rows[0];
-        if (row === undefined) throw new Error('the publication insert returned no row');
-        return toPublication(row);
+        if (row === undefined) throw new Error('the handout insert returned no row');
+        return toHandout(row);
       } catch (error) {
         await client.query('ROLLBACK');
         throw error;
@@ -152,38 +150,38 @@ export function createPublicationRepository(
       }
     },
 
-    getPublicationById(id) {
+    getHandoutById(id) {
       return findOne('id', id);
     },
 
-    getPublicationBySlug(slug) {
+    getHandoutBySlug(slug) {
       return findOne('slug', slug);
     },
 
-    async listPublicationsByOwner(ownerSubject) {
-      const result = await pool.query<PublicationRow>(
-        `SELECT ${COLUMNS} FROM publications WHERE owner_subject = $1 ORDER BY created_at DESC`,
+    async listHandoutsByOwner(ownerSubject) {
+      const result = await pool.query<HandoutRow>(
+        `SELECT ${COLUMNS} FROM handouts WHERE owner_subject = $1 ORDER BY created_at DESC`,
         [ownerSubject],
       );
-      return result.rows.map(toPublication);
+      return result.rows.map(toHandout);
     },
 
     /**
-     * Rejects a slug in the patch rather than ignoring it: the address part of a publication
+     * Rejects a slug in the patch rather than ignoring it: the address part of a handout
      * is fixed, and a caller that thinks it changed one has to find out.
      */
-    async updatePublication(id, patch) {
+    async updateHandout(id, patch) {
       if ('slug' in patch) throw new ImmutableFieldError('slug');
 
       const client = await pool.connect();
       try {
         await client.query('BEGIN');
         const current = await client.query<{ slug: string }>(
-          'SELECT slug FROM publications WHERE id = $1 FOR UPDATE',
+          'SELECT slug FROM handouts WHERE id = $1 FOR UPDATE',
           [id],
         );
         const row = current.rows[0];
-        if (row === undefined) throw new Error(`no publication with id ${id}`);
+        if (row === undefined) throw new Error(`no handout with id ${id}`);
 
         const assignments: string[] = [];
         const values: unknown[] = [id];
@@ -200,17 +198,17 @@ export function createPublicationRepository(
             patch.password === null ? null : encryptPassword(patch.password, passwordKey, row.slug),
           );
         }
-        // A change to the publication moves `updated_at`; a recorded access does not.
+        // A change to the handout moves `updated_at`; a recorded access does not.
         assignments.push('updated_at = now()');
 
-        const updated = await client.query<PublicationRow>(
-          `UPDATE publications SET ${assignments.join(', ')} WHERE id = $1 RETURNING ${COLUMNS}`,
+        const updated = await client.query<HandoutRow>(
+          `UPDATE handouts SET ${assignments.join(', ')} WHERE id = $1 RETURNING ${COLUMNS}`,
           values,
         );
         await client.query('COMMIT');
         const result = updated.rows[0];
-        if (result === undefined) throw new Error(`no publication with id ${id}`);
-        return toPublication(result);
+        if (result === undefined) throw new Error(`no handout with id ${id}`);
+        return toHandout(result);
       } catch (error) {
         await client.query('ROLLBACK');
         throw error;
@@ -219,23 +217,23 @@ export function createPublicationRepository(
       }
     },
 
-    /** A hard delete of the publication row. Its reservation stays, forever. */
-    async deletePublication(id) {
-      const result = await pool.query('DELETE FROM publications WHERE id = $1', [id]);
+    /** A hard delete of the handout row. Its reservation stays, forever. */
+    async deleteHandout(id) {
+      const result = await pool.query('DELETE FROM handouts WHERE id = $1', [id]);
       return (result.rowCount ?? 0) > 0;
     },
 
     async touchLastAccessed(slug, at) {
       await pool.query(
-        'UPDATE publications SET last_accessed_at = COALESCE($2::timestamptz, now()) WHERE slug = $1',
+        'UPDATE handouts SET last_accessed_at = COALESCE($2::timestamptz, now()) WHERE slug = $1',
         [slug, at ?? null],
       );
     },
 
     /** The only function that returns a plaintext password. */
-    async readPublicationPassword(id) {
+    async readHandoutPassword(id) {
       const result = await pool.query<{ slug: string; encrypted_password: string | null }>(
-        'SELECT slug, encrypted_password FROM publications WHERE id = $1',
+        'SELECT slug, encrypted_password FROM handouts WHERE id = $1',
         [id],
       );
       const row = result.rows[0];

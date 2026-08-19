@@ -14,17 +14,17 @@ const artifactHtml =
 
 beforeAll(async () => {
   dataDir = mkdtempSync(path.join(os.tmpdir(), 'handout-delivery-integration-'));
-  const publicationDir = path.join(dataDir, 'handouts', 'kaffee23');
-  mkdirSync(path.join(publicationDir, 'sub'), { recursive: true });
-  mkdirSync(path.join(publicationDir, 'assets'));
+  const handoutDir = path.join(dataDir, 'handouts', 'kaffee23');
+  mkdirSync(path.join(handoutDir, 'sub'), { recursive: true });
+  mkdirSync(path.join(handoutDir, 'assets'));
 
-  writeFileSync(path.join(publicationDir, 'index.html'), artifactHtml);
-  writeFileSync(path.join(publicationDir, 'style.css'), 'body { color: teal; }');
-  writeFileSync(path.join(publicationDir, 'assets', 'app.js'), 'console.log("kaffee")');
-  writeFileSync(path.join(publicationDir, 'sub', 'index.html'), 'sub page');
-  writeFileSync(path.join(publicationDir, 'blob.bin'), Buffer.from([0, 1, 2, 3]));
-  writeFileSync(path.join(publicationDir, '.hidden'), 'secret');
-  symlinkSync('/etc', path.join(publicationDir, 'etc'));
+  writeFileSync(path.join(handoutDir, 'index.html'), artifactHtml);
+  writeFileSync(path.join(handoutDir, 'style.css'), 'body { color: teal; }');
+  writeFileSync(path.join(handoutDir, 'assets', 'app.js'), 'console.log("kaffee")');
+  writeFileSync(path.join(handoutDir, 'sub', 'index.html'), 'sub page');
+  writeFileSync(path.join(handoutDir, 'blob.bin'), Buffer.from([0, 1, 2, 3]));
+  writeFileSync(path.join(handoutDir, '.hidden'), 'secret');
+  symlinkSync('/etc', path.join(handoutDir, 'etc'));
 
   const config = loadConfig({
     LOG_LEVEL: 'silent',
@@ -51,8 +51,8 @@ function localReferences(html: string): string[] {
   return references;
 }
 
-describe('publication delivery', () => {
-  it('serves the publication root with a trailing slash', async () => {
+describe('handout delivery', () => {
+  it('serves the handout root with a trailing slash', async () => {
     const response = await app.inject({ method: 'GET', url: '/kaffee23/' });
 
     expect(response.statusCode).toBe(200);
@@ -131,7 +131,7 @@ describe('publication delivery', () => {
     expect(response.body).not.toContain('root:');
   });
 
-  it('answers a missing file inside a real publication with the not-found page', async () => {
+  it('answers a missing file inside a real handout with the not-found page', async () => {
     const response = await app.inject({ method: 'GET', url: '/kaffee23/missing.css' });
 
     expect(response.statusCode).toBe(404);
@@ -157,14 +157,14 @@ describe('publication delivery', () => {
   });
 
   it('keeps the API contract: a missing API route stays JSON', async () => {
-    const response = await app.inject({ method: 'GET', url: '/_handout/api/nope' });
+    const response = await app.inject({ method: 'GET', url: '/api/nope' });
 
     expect(response.statusCode).toBe(404);
     expect(response.headers['content-type']).toMatch(/^application\/json/);
   });
 
-  it('treats the reserved-prefix look-alike as publication space', async () => {
-    const response = await app.inject({ method: 'GET', url: '/_handoutx/api/health' });
+  it('treats a reserved-segment look-alike as handout space', async () => {
+    const response = await app.inject({ method: 'GET', url: '/apiiiii/health' });
 
     expect(response.statusCode).toBe(404);
     expect(response.headers['content-type']).toMatch(/^text\/html/);

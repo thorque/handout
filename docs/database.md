@@ -1,17 +1,17 @@
 # The database
 
-Everything the application knows about a publication without reading its files lives in
+Everything the application knows about a handout without reading its files lives in
 Postgres. The published content itself does not: that stays plain directories on disk.
 
-Access goes through one narrow layer, `service/src/publications/repository.ts`. Nothing
+Access goes through one narrow layer, `service/src/handouts/repository.ts`. Nothing
 else in the service writes SQL against these tables.
 
 ## The two tables
 
 ### `slug_reservations`
 
-Every address part ever issued, and it is **never pruned**. Deleting a publication removes
-its row in `publications` and leaves the reservation standing, so the slug can never be
+Every address part ever issued, and it is **never pruned**. Deleting a handout removes
+its row in `handouts` and leaves the reservation standing, so the slug can never be
 drawn again.
 
 That is a product rule, not a technical convenience: a link from an old customer mail must
@@ -23,19 +23,19 @@ that always raises — a reservation cannot be deleted, not even by hand in psql
 | `slug`        | primary key, six to eight characters from the alphabet below |
 | `reserved_at` | when it was drawn                                            |
 
-### `publications`
+### `handouts`
 
-| Column               | Meaning                                                           |
-| -------------------- | ----------------------------------------------------------------- |
-| `id`                 | `uuid`, the internal handle                                       |
-| `slug`               | the address part, unique, references `slug_reservations`          |
-| `display_name`       | what the owner sees; 1–200 characters after trimming              |
-| `owner_subject`      | the OIDC subject — the immutable identity a publication hangs off |
-| `owner_email`        | a human-readable copy, refreshed at login, may be `NULL`          |
-| `encrypted_password` | the password envelope, `NULL` when the publication is open        |
-| `created_at`         | insertion time                                                    |
-| `updated_at`         | last change **to the publication**                                |
-| `last_accessed_at`   | last delivery to a recipient, `NULL` until the first one          |
+| Column               | Meaning                                                       |
+| -------------------- | ------------------------------------------------------------- |
+| `id`                 | `uuid`, the internal handle                                   |
+| `slug`               | the address part, unique, references `slug_reservations`      |
+| `display_name`       | what the owner sees; 1–200 characters after trimming          |
+| `owner_subject`      | the OIDC subject — the immutable identity a handout hangs off |
+| `owner_email`        | a human-readable copy, refreshed at login, may be `NULL`      |
+| `encrypted_password` | the password envelope, `NULL` when the handout is open        |
+| `created_at`         | insertion time                                                |
+| `updated_at`         | last change **to the handout**                                |
+| `last_accessed_at`   | last delivery to a recipient, `NULL` until the first one      |
 
 Two things about it are easy to get wrong:
 
@@ -44,7 +44,7 @@ Two things about it are easy to get wrong:
   access layer rejects a `slug` key in a patch with `ImmutableFieldError` — both paths,
   because a caller can arrive either way.
 - **`updated_at` is not maintained by a trigger.** It means "last change to the
-  publication", so recording an access must not move it. The statements that mean a change
+  handout", so recording an access must not move it. The statements that mean a change
   set it explicitly.
 
 The protection status is derived (`encrypted_password IS NOT NULL`) rather than kept in its
@@ -69,7 +69,7 @@ and `=` out of a value that may pass through URLs and logs. The `v1.` prefix is 
 later key rotation needs; nothing rotates anything today.
 
 The **slug goes in as additional authenticated data**. It is immutable and known before the
-row is inserted, so this binds a ciphertext to exactly one publication: copying the column
+row is inserted, so this binds a ciphertext to exactly one handout: copying the column
 value to another row makes it undecryptable rather than silently working.
 
 The key comes from `HANDOUT_PASSWORD_KEY` — 32 bytes, base64 — and from nowhere else. Never
@@ -84,8 +84,8 @@ first lookup. It belongs in the backup plan; without it no password can be read 
 ```
 
 31 characters. Lowercase only, because a slug gets read aloud and retyped; `0` and `1` are
-dropped along with the letters `i`, `l` and `o` they are confused with. **`_` is excluded**
-so a slug can never collide with the `/_handout/` namespace the application owns — see
+dropped along with the letters `i`, `l` and `o` they are confused with. **`_` stays
+excluded too, now for legibility** — it reads badly in a dictated or retyped address — see
 [`url-namespace.md`](url-namespace.md).
 
 Newly drawn slugs are eight characters, the top of the six-to-eight range the brief
@@ -93,8 +93,8 @@ permits; the CHECK constraint keeps the whole range so the documented contract s
 draw uses `crypto.randomInt`, which rejection-samples and therefore has no modulo bias, and
 it is **never derived from the display name** in any way.
 
-`createPublication` reserves the slug and inserts the publication in **one transaction**,
-retrying with a fresh draw on a collision. A publication can therefore never exist without
+`createHandout` reserves the slug and inserts the handout in **one transaction**,
+retrying with a fresh draw on a collision. A handout can therefore never exist without
 its reservation, and a slug that was never handed out to anyone may be drawn again.
 
 ## Migrations

@@ -7,9 +7,7 @@ type ServiceStatus = 'checking' | 'ok' | 'unreachable';
 /**
  * The start page's primary action, standing in the frame's action slot.
  *
- * It carries no behaviour yet: creating a publication is the upload story of epic HAN-2,
- * and it fills exactly this button. There is deliberately no `onClick` — a no-op would let
- * the button pretend to work.
+ * There is deliberately no `onClick` — a no-op would let the button pretend to work.
  */
 export function NewHandoutAction() {
   return (
@@ -30,7 +28,7 @@ async function fetchStatus(): Promise<ServiceStatus> {
   try {
     // Relative path: the service is reached through this page's own origin.
     // See docs/url-namespace.md.
-    const response = await fetch('/_handout/api/health');
+    const response = await fetch('/api/health');
     if (!response.ok) return 'unreachable';
     const body = (await response.json()) as { status?: string };
     return body.status === 'ok' ? 'ok' : 'unreachable';

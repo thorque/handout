@@ -1,13 +1,14 @@
 /**
- * The one place where an address becomes a slug — the single seam HAN-12 opens when it
- * adds subdomain mode and a base domain. It takes a pathname and nothing else: no `Host`,
- * no base domain, no mode. Nothing else in the service may decide this.
+ * The one place where an address becomes a slug. It takes a pathname and nothing else: no
+ * `Host` header, no second hostname to weigh in, no mode to branch on — a pathname on the
+ * instance's one hostname is the whole truth, per ADR 0001. Nothing else in the service
+ * may decide this.
  */
 import { isSlug } from '../slug';
 
-export interface PublicationAddress {
+export interface HandoutAddress {
   slug: string;
-  /** The path inside the publication, already decoded, split on `/`, empty parts dropped. */
+  /** The path inside the handout, already decoded, split on `/`, empty parts dropped. */
   rest: string[];
 }
 
@@ -16,7 +17,7 @@ export interface PublicationAddress {
  * first as the slug candidate and checks it with {@link isSlug}. A malformed escape or an
  * invalid slug gives `undefined`, never a throw.
  */
-export function addressFromPath(pathname: string): PublicationAddress | undefined {
+export function addressFromPath(pathname: string): HandoutAddress | undefined {
   const parts = pathname.split('/').filter((part) => part !== '');
   if (parts.length === 0) return undefined;
 

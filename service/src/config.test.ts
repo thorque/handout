@@ -92,4 +92,21 @@ describe('loadConfig', () => {
       passwordKey: Buffer.from(TEST_KEY, 'base64'),
     });
   });
+
+  it('carries exactly this key set — a guard, not a discovery', () => {
+    // ADR 0001: one instance, one hostname, one way to resolve a handout's address. This
+    // surface already carries nothing that would let a second one exist, and this pins
+    // that fact so that adding one later is a visible decision here, not a silent drift.
+    expect(Object.keys(loadConfig(REQUIRED)).sort()).toEqual(
+      [
+        'port',
+        'host',
+        'logLevel',
+        'dataDir',
+        'databaseUrl',
+        'databaseSchema',
+        'passwordKey',
+      ].sort(),
+    );
+  });
 });

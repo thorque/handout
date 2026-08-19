@@ -32,7 +32,7 @@ const pool = createPool(config);
 async function checkDatabase(): Promise<boolean> {
   try {
     const result = await pool.query<{ ready: boolean }>(
-      `SELECT to_regclass('publications') IS NOT NULL
+      `SELECT to_regclass('handouts') IS NOT NULL
               AND to_regclass('slug_reservations') IS NOT NULL AS ready`,
     );
     return result.rows[0]?.ready === true;

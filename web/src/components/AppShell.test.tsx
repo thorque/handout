@@ -22,7 +22,7 @@ describe('AppShell', () => {
   it('puts the wordmark on screen and the content into a main landmark', () => {
     renderShell();
 
-    // Criterion 8 of HAN-23: the wordmark from the design system is in the application.
+    // The wordmark from the design system is in the application.
     expect(screen.getByRole('banner')).toBeDefined();
     expect(screen.getByRole('img', { name: 'handout' })).toBeDefined();
     expect(screen.getByRole('main').textContent).toContain('Service: ok');
@@ -57,9 +57,9 @@ describe('AppShell', () => {
   });
 
   it('keeps the narrow-width rule that makes the header usable on a phone', () => {
-    // Criterion 4 of HAN-26. jsdom measures no layout, so what is checkable here is that
-    // the rule still exists: deleting it is the regression a rendering test cannot see.
-    // The walkthrough in the plan is what proves it on a real screen.
+    // jsdom measures no layout, so what is checkable here is that the rule still exists:
+    // deleting it is the regression a rendering test cannot see. A real screen is what
+    // proves it.
     const here = path.dirname(fileURLToPath(import.meta.url));
     const css = readFileSync(path.join(here, 'AppShell.module.css'), 'utf8');
 

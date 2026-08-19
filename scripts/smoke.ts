@@ -1,9 +1,9 @@
 /**
- * End-to-end smoke check against the two running dev servers and, since HAN-7, against
- * Caddy as well. It assumes the dev servers are already up
- * (`monoceros-ctl start handout-app`); it does not only observe them any more, either — it
- * places a fixture publication in the data directory before the checks run and removes it
- * again afterwards. It still imports no application code.
+ * End-to-end smoke check against the two running dev servers and against Caddy as well.
+ * It assumes the dev servers are already up (`monoceros-ctl start handout-app`); it does
+ * not only observe them any more, either — it places a fixture handout in the data
+ * directory before the checks run and removes it again afterwards. It still imports no
+ * application code.
  */
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -90,7 +90,7 @@ function statusWithHost(
 
 /**
  * How long to wait for either a `response` or an `upgrade` before giving up. Measured: a
- * non-socket path under `/_handout/*` gives neither — Vite answers nothing at all, no
+ * non-socket path under `/app/*` gives neither — Vite answers nothing at all, no
  * `response`, no `upgrade`, no `error` — so without a timeout the promise never settles
  * and the check hangs forever instead of failing. 3s is generous for a same-host request.
  */
@@ -220,7 +220,7 @@ writeFileSync(path.join(fixtureDir, 'assets', 'app.js'), 'console.log("smoke fix
 
 try {
   await check('service-health', async () => {
-    const response = await fetch(`${SERVICE_ORIGIN}/_handout/api/health`);
+    const response = await fetch(`${SERVICE_ORIGIN}/api/health`);
     assert(response.status === 200, `expected 200, got ${response.status}`);
     assert(
       contentType(response).includes('application/json'),
@@ -234,7 +234,7 @@ try {
   await check('service-database', async () => {
     // The end-to-end proof that the migrations ran at start: health reports the schema, not
     // merely a socket that answered.
-    const response = await fetch(`${SERVICE_ORIGIN}/_handout/api/health`);
+    const response = await fetch(`${SERVICE_ORIGIN}/api/health`);
     const body = (await response.json()) as { database?: string };
     assert(
       body.database === 'ok',
@@ -243,11 +243,11 @@ try {
   });
 
   await check('service-bind', async () => {
-    const response = await fetch(`http://${lanIp}:3000/_handout/api/health`);
+    const response = await fetch(`http://${lanIp}:3000/api/health`);
     assert(response.status === 200, `expected 200 on ${lanIp}:3000, got ${response.status}`);
   });
 
-  await check('service-publication', async () => {
+  await check('service-handout', async () => {
     const response = await fetch(`${SERVICE_ORIGIN}/${fixtureSlug}/`);
     assert(response.status === 200, `expected 200, got ${response.status}`);
     assert(
@@ -268,14 +268,14 @@ try {
     }
   });
 
-  await check('service-publication-index', async () => {
+  await check('service-handout-index', async () => {
     const response = await fetch(`${SERVICE_ORIGIN}/${fixtureSlug}`);
     assert(response.status === 200, `expected 200, got ${response.status}`);
     const body = await response.text();
     assert(body === fixtureHtml, 'the served body differs from what was written');
   });
 
-  await check('service-404-publication', async () => {
+  await check('service-404-handout', async () => {
     const response = await fetch(`${SERVICE_ORIGIN}/${unusedSlug}/`);
     assert(response.status === 404, `expected 404, got ${response.status}`);
     assert(
@@ -291,12 +291,12 @@ try {
     assert(response.status === 404, `expected 404, got ${response.status}`);
     assert(
       contentType(response).includes('text/html'),
-      `expected HTML, got "${contentType(response)}" — /nope is publication space`,
+      `expected HTML, got "${contentType(response)}" — /nope is handout space`,
     );
   });
 
   await check('service-404-api', async () => {
-    const response = await fetch(`${SERVICE_ORIGIN}/_handout/api/nope`);
+    const response = await fetch(`${SERVICE_ORIGIN}/api/nope`);
     assert(response.status === 404, `expected 404, got ${response.status}`);
     assert(
       contentType(response).includes('application/json'),
@@ -305,11 +305,23 @@ try {
   });
 
   await check('service-404-reserved-lookalike', async () => {
-    const response = await fetch(`${SERVICE_ORIGIN}/_handoutx/api/health`);
+    // A legal slug that a prefix matcher would swallow — /appleee must stay handout space.
+    const response = await fetch(`${SERVICE_ORIGIN}/appleee`);
     assert(response.status === 404, `expected 404, got ${response.status}`);
     assert(
       contentType(response).includes('text/html'),
-      `expected HTML, got "${contentType(response)}" — /_handoutx is publication space`,
+      `expected HTML, got "${contentType(response)}" — /appleee is handout space`,
+    );
+  });
+
+  await check('service-404-unlock', async () => {
+    // Reserved, but nothing serves it yet — proof that a reserved path with no route
+    // behind it answers the API's JSON 404, not handout space's HTML page.
+    const response = await fetch(`${SERVICE_ORIGIN}/unlock`);
+    assert(response.status === 404, `expected 404, got ${response.status}`);
+    assert(
+      contentType(response).includes('application/json'),
+      `expected JSON, got "${contentType(response)}" — /unlock must stay reserved`,
     );
   });
 
@@ -321,13 +333,24 @@ try {
   });
 
   await check('web-index', async () => {
-    const response = await fetch(`${WEB_ORIGIN}/`, { redirect: 'follow' });
+    const response = await fetch(`${WEB_ORIGIN}/app/`, { redirect: 'follow' });
     assert(response.status === 200, `expected 200, got ${response.status}`);
     assert(
       contentType(response).includes('text/html'),
       `expected HTML, got "${contentType(response)}"`,
     );
     indexHtml = await response.text();
+  });
+
+  await check('web-base-redirect', async () => {
+    // Measured behaviour of Vite's base middleware: a raw request to `/` is outside
+    // `base` and gets a 302 to it, never a 200 — the dev server has one home now.
+    const response = await fetch(`${WEB_ORIGIN}/`, { redirect: 'manual' });
+    assert(response.status === 302, `expected 302, got ${response.status}`);
+    assert(
+      response.headers.get('location') === '/app/',
+      `expected Location: /app/, got ${JSON.stringify(response.headers.get('location'))}`,
+    );
   });
 
   await check('web-assets', async () => {
@@ -362,7 +385,7 @@ try {
   });
 
   await check('web-api-proxy', async () => {
-    const response = await fetch(`${WEB_ORIGIN}/_handout/api/health`);
+    const response = await fetch(`${WEB_ORIGIN}/api/health`);
     assert(response.status === 200, `expected 200, got ${response.status}`);
     assert(
       contentType(response).includes('application/json'),
@@ -376,24 +399,24 @@ try {
   });
 
   await check('web-host-proxy', async () => {
-    const status = await statusWithHost(5173, '/', 'handout-5173.localhost');
+    const status = await statusWithHost(5173, '/app/', 'handout-5173.localhost');
     assert(status === 200, `expected 200, got ${status} — allowedHosts blocks the proxy URL`);
   });
 
   await check('web-host-lan', async () => {
-    const status = await statusWithHost(5173, '/', 'handout.local');
+    const status = await statusWithHost(5173, '/app/', 'handout.local');
     assert(status === 200, `expected 200, got ${status} — allowedHosts blocks the LAN name`);
   });
 
   await check('web-bind', async () => {
-    const response = await fetch(`http://${lanIp}:5173/`);
+    const response = await fetch(`http://${lanIp}:5173/app/`);
     assert(response.status === 200, `expected 200 on ${lanIp}:5173, got ${response.status}`);
   });
 
   let tokensCss = '';
 
   await check('design-tokens', async () => {
-    const response = await fetch(`${WEB_ORIGIN}/_handout/design/tokens.css`);
+    const response = await fetch(`${WEB_ORIGIN}/app/design/tokens.css`);
     assert(response.status === 200, `expected 200, got ${response.status}`);
     // Not the SPA fallback: a dev server answering HTML here would 200 and look fine.
     assert(
@@ -441,7 +464,7 @@ try {
   });
 
   await check('design-no-react-page', async () => {
-    const response = await fetch(`${WEB_ORIGIN}/_handout/design/no-react.html`);
+    const response = await fetch(`${WEB_ORIGIN}/app/design/no-react.html`);
     assert(response.status === 200, `expected 200, got ${response.status}`);
     assert(
       contentType(response).includes('text/html'),
@@ -468,12 +491,12 @@ try {
       );
     }
 
-    // Criterion 5 of HAN-26: no application frame on a page for recipients, where nobody is
-    // signed in. What this proves is that the recipient-shaped page carries none of the
-    // account markup; what it does not prove is HAN-20's real password page, which re-proves
-    // it on itself. The page keeps its own plain brand header — a wordmark, no session — and
-    // the application header cannot reach it by construction: it is a React component mounted
-    // at the application root, and this page loads no module at all, which is asserted above.
+    // No application frame on a page for recipients, where nobody is signed in. What this
+    // proves is that the recipient-shaped page carries none of the account markup; what it
+    // does not prove is the real password page, which re-proves it on itself. The page
+    // keeps its own plain brand header — a wordmark, no session — and the application
+    // header cannot reach it by construction: it is a React component mounted at the
+    // application root, and this page loads no module at all, which is asserted above.
     const accountMarkup: [string, string][] = [
       ['aria-haspopup="menu"', 'the profile mark'],
       ['role="menu"', 'the account menu'],
@@ -482,10 +505,7 @@ try {
       ['Abmelden', 'the sign-out'],
     ];
     for (const [needle, what] of accountMarkup) {
-      assert(
-        !markup.includes(needle),
-        `the recipient page carries ${what} (${needle}) — criterion 5 of HAN-26`,
-      );
+      assert(!markup.includes(needle), `the recipient page carries ${what} (${needle})`);
     }
 
     for (const reference of localReferences(html)) {
@@ -509,7 +529,7 @@ try {
   await check('design-sample-route', async () => {
     // This only proves Vite's SPA fallback answers the path. What the page *contains* is
     // proven by web/src/pages/DesignSystemPage.test.tsx, not here.
-    const response = await fetch(`${WEB_ORIGIN}/_handout/design-system`);
+    const response = await fetch(`${WEB_ORIGIN}/app/design-system`);
     assert(response.status === 200, `expected 200, got ${response.status}`);
     assert(
       contentType(response).includes('text/html'),
@@ -548,16 +568,33 @@ try {
         'a domain makes Caddy chase a certificate and fail',
     );
     assert(
-      /handle \/_handout\/\* \{\s*reverse_proxy \{\$WEB_HOST/.test(caddyfile),
-      '/_handout/* is not routed to {$WEB_HOST',
+      /@app path \/app \/app\/\*/.test(caddyfile),
+      'the @app matcher is missing or no longer lists /app and /app/* exactly',
+    );
+    assert(
+      /handle @app \{\s*reverse_proxy \{\$WEB_HOST/.test(caddyfile),
+      '@app is not routed to {$WEB_HOST',
+    );
+    assert(
+      /@api path \/api \/api\/\*/.test(caddyfile),
+      'the @api matcher is missing or no longer lists /api and /api/* exactly',
+    );
+    assert(
+      /handle @api \{\s*reverse_proxy \{\$APP_HOST/.test(caddyfile),
+      '@api is not routed to {$APP_HOST',
     );
     assert(
       /handle \{\s*reverse_proxy \{\$APP_HOST/.test(caddyfile),
       'the catch-all handle is not routed to {$APP_HOST',
     );
+    // Split rather than written as one literal: service/test/vocabulary.test.ts hunts
+    // repository-wide for this old application path, and this source line would
+    // otherwise trip its own grep.
+    const oldPath = '/_' + 'handout';
+    assert(!caddyfile.includes(oldPath), `the Caddyfile still names the old ${oldPath} path`);
   });
 
-  await check('proxy-publication', async () => {
+  await check('proxy-handout', async () => {
     const response = await proxyFetch(`${PROXY_ORIGIN}/${fixtureSlug}/`);
     assert(response.status === 200, `expected 200, got ${response.status}`);
     assert(
@@ -590,7 +627,7 @@ try {
   });
 
   await check('proxy-api', async () => {
-    const response = await proxyFetch(`${PROXY_ORIGIN}/_handout/api/health`);
+    const response = await proxyFetch(`${PROXY_ORIGIN}/api/health`);
     assert(response.status === 200, `expected 200, got ${response.status}`);
     assert(
       contentType(response).includes('application/json'),
@@ -604,7 +641,7 @@ try {
   });
 
   await check('proxy-app', async () => {
-    const response = await proxyFetch(`${PROXY_ORIGIN}/_handout/`);
+    const response = await proxyFetch(`${PROXY_ORIGIN}/app/`);
     assert(response.status === 200, `expected 200, got ${response.status}`);
     assert(
       contentType(response).includes('text/html'),
@@ -635,7 +672,7 @@ try {
   });
 
   await check('proxy-design-tokens', async () => {
-    const response = await proxyFetch(`${PROXY_ORIGIN}/_handout/design/tokens.css`);
+    const response = await proxyFetch(`${PROXY_ORIGIN}/app/design/tokens.css`);
     assert(response.status === 200, `expected 200, got ${response.status}`);
     assert(
       contentType(response).includes('text/css') && !contentType(response).includes('text/html'),
@@ -644,17 +681,15 @@ try {
   });
 
   await check('proxy-hmr', async () => {
-    // Measured (HAN-7): with no path configured, the HMR socket sits at "/", which
-    // Caddy's catch-all hands to the service — an upgrade there 404s instead of
-    // switching protocols. web/vite.config.ts moves it to /_handout/vite-hmr, which the
-    // existing `handle /_handout/*` block already carries to Vite. This is the check
-    // that would catch that route breaking again, silently, behind a page that still
-    // loads.
+    // Measured: the HMR socket follows `base` (hmrBase = config.base in the installed
+    // Vite), so with base: '/app/' and no ws.path it already sits at /app/ — exactly
+    // where the `@app` Caddy block carries it. This is the check that would catch that
+    // route breaking again, silently, behind a page that still loads.
     const proxyUrl = new URL(PROXY_ORIGIN);
     const port = proxyUrl.port === '' ? 80 : Number(proxyUrl.port);
     let result: { statusCode: number; headers: http.IncomingHttpHeaders };
     try {
-      result = await websocketUpgrade(proxyUrl.hostname, port, '/_handout/vite-hmr');
+      result = await websocketUpgrade(proxyUrl.hostname, port, '/app/');
     } catch (error) {
       const cause = error instanceof Error ? error.message : String(error);
       throw new Error(
@@ -679,12 +714,7 @@ try {
     const port = proxyUrl.port === '' ? 80 : Number(proxyUrl.port);
     let status: number;
     try {
-      status = await statusWithHost(
-        port,
-        '/_handout/',
-        'handout-caddy.localhost',
-        proxyUrl.hostname,
-      );
+      status = await statusWithHost(port, '/app/', 'handout-caddy.localhost', proxyUrl.hostname);
     } catch (error) {
       const cause = error instanceof Error ? error.message : String(error);
       throw new Error(

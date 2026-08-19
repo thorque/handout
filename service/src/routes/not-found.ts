@@ -1,8 +1,7 @@
 /**
- * The plain, undesigned not-found page publication space answers with. No design tokens,
+ * The plain, undesigned not-found page handout space answers with. No design tokens,
  * no stylesheet link, no application frame, no React — React is structurally impossible
- * here (it is the Vite app), and the designed version is HAN-19's `han19-ac-5`; this is
- * the deliberately plain stand-in HAN-7 leaves behind.
+ * here (it is the Vite app). A deliberately plain stand-in.
  *
  * German, because it is read by recipients (persona Katrin) and the application's
  * user-facing strings are German, while the repository itself stays English.

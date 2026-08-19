@@ -2,20 +2,20 @@
 
 -- Every address part ever issued, kept forever. A link from an old customer mail must
 -- never resolve to someone else's content, so a slug is never released, not even when the
--- publication that used it is deleted.
+-- handout that used it is deleted.
 CREATE TABLE slug_reservations (
   slug        text PRIMARY KEY
               CHECK (slug ~ '^[23456789abcdefghjkmnpqrstuvwxyz]{6,8}$'),
   reserved_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE publications (
+CREATE TABLE handouts (
   id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  -- No ON DELETE clause on purpose: a reservation outlives its publication, and it can
-  -- never be removed while a publication still uses it.
+  -- No ON DELETE clause on purpose: a reservation outlives its handout, and it can
+  -- never be removed while a handout still uses it.
   slug               text NOT NULL UNIQUE REFERENCES slug_reservations (slug),
   display_name       text NOT NULL CHECK (length(btrim(display_name)) BETWEEN 1 AND 200),
-  -- The OIDC subject: the immutable identity a publication belongs to.
+  -- The OIDC subject: the immutable identity a handout belongs to.
   owner_subject      text NOT NULL,
   -- A human-readable copy, refreshed at login. Not every provider releases an email claim.
   owner_email        text,
@@ -27,17 +27,17 @@ CREATE TABLE publications (
                             OR encrypted_password ~ '^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'),
   created_at         timestamptz NOT NULL DEFAULT now(),
   -- Maintained by the statements that mean a change, deliberately not by a trigger: a
-  -- recorded access must not count as a change to the publication.
+  -- recorded access must not count as a change to the handout.
   updated_at         timestamptz NOT NULL DEFAULT now(),
   last_accessed_at   timestamptz
 );
 
-CREATE INDEX publications_owner_subject_created_at_idx
-  ON publications (owner_subject, created_at DESC);
+CREATE INDEX handouts_owner_subject_created_at_idx
+  ON handouts (owner_subject, created_at DESC);
 
--- The address part is fixed for the lifetime of a publication. Renaming must never change
+-- The address part is fixed for the lifetime of a handout. Renaming must never change
 -- it, and no hand-written UPDATE in psql may either.
-CREATE FUNCTION publications_reject_slug_change() RETURNS trigger AS $$
+CREATE FUNCTION handouts_reject_slug_change() RETURNS trigger AS $$
 BEGIN
   IF NEW.slug IS DISTINCT FROM OLD.slug THEN
     RAISE EXCEPTION 'slug is immutable' USING ERRCODE = '23514';
@@ -46,9 +46,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER publications_slug_immutable
-  BEFORE UPDATE ON publications
-  FOR EACH ROW EXECUTE FUNCTION publications_reject_slug_change();
+CREATE TRIGGER handouts_slug_immutable
+  BEFORE UPDATE ON handouts
+  FOR EACH ROW EXECUTE FUNCTION handouts_reject_slug_change();
 
 CREATE FUNCTION slug_reservations_reject_delete() RETURNS trigger AS $$
 BEGIN
@@ -64,7 +64,7 @@ CREATE TRIGGER slug_reservations_permanent
 
 DROP TRIGGER slug_reservations_permanent ON slug_reservations;
 DROP FUNCTION slug_reservations_reject_delete();
-DROP TRIGGER publications_slug_immutable ON publications;
-DROP FUNCTION publications_reject_slug_change();
-DROP TABLE publications;
+DROP TRIGGER handouts_slug_immutable ON handouts;
+DROP FUNCTION handouts_reject_slug_change();
+DROP TABLE handouts;
 DROP TABLE slug_reservations;

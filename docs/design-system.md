@@ -8,7 +8,7 @@ system rather than a starting point everyone drifts from.
 The whole token layer is **one physical file**:
 
 ```
-web/public/_handout/design/tokens.css   →   /_handout/design/tokens.css
+web/public/design/tokens.css   →   /app/design/tokens.css
 ```
 
 The React application links it from `web/index.html`. A page without React — the recipient
@@ -16,12 +16,17 @@ password page, and `no-react.html` next to it today — links the same URL. Ther
 second copy, no import into JavaScript and no build step, which is what makes "single
 source of truth" a fact rather than a claim.
 
-It lives under `public/_handout/`, never `public/design/`: `/design/…` at the root is
-publication space and `design` is six characters, so a generated slug could collide with
-it. See [`url-namespace.md`](url-namespace.md).
+It lives under `web/public/design/`. The application owns exactly the three first path
+segments (`app`, `api`, `unlock`, see [`url-namespace.md`](url-namespace.md)), and the root
+belongs to handout space — no per-word collision argument is needed for `design` itself,
+because it never sits at the root: `web/index.html` is rewritten by Vite and therefore
+writes `/design/…`, while files under `public/` are copied verbatim and therefore carry
+the final path, `/app/design/…`, themselves. Both serve the same files at the same URLs;
+only the sources look asymmetric.
 
-Vite serves `public/` verbatim at the dev-server root and copies it into `dist/` with the
-filenames intact, so the URL is stable and unhashed in development and in a build alike.
+Vite serves `public/` verbatim at the dev-server root (under `base`, so at `/app/…`) and
+copies it into `dist/` with the filenames intact, so the URL is stable and unhashed in
+development and in a build alike.
 
 ## Where it comes from, and what happens to a change
 
@@ -92,7 +97,7 @@ The `:not()` in the middle block is what lets an explicit light choice win over 
 
 ### Why the resolution is a blocking script, not a React effect
 
-`/_handout/design/theme-init.js` is a **classic** script — no `module`, no `defer`, no
+`/app/design/theme-init.js` is a **classic** script — no `module`, no `defer`, no
 `async` — so the parser blocks on it and nothing is painted before it has run. A React
 `useEffect` that sets the theme would paint light first and then flip; that flash is what
 this file prevents, and it is why the resolution does not live in the provider.
@@ -223,7 +228,7 @@ to be explained is worth one step of a colour channel.
 ## Fonts
 
 Public Sans and IBM Plex Mono ship with the application, under
-`/_handout/design/fonts/`. Nothing is loaded from Google: Handout promises recipients no
+`/app/design/fonts/`. Nothing is loaded from Google: Handout promises recipients no
 consent banner, and that promise starts with the font.
 
 - **Weights**, exactly the design's: Public Sans 400 / 500 / 700, IBM Plex Mono 400 / 500.
@@ -246,13 +251,13 @@ Reproducing the copy, or bumping the version (run from the project root):
 npm i -D -w web @fontsource/public-sans@5.3.0 @fontsource/ibm-plex-mono@5.3.0
 ls node_modules/@fontsource/public-sans/files/ | grep -- '-latin-'
 ls node_modules/@fontsource/ibm-plex-mono/files/ | grep -- '-latin-'
-mkdir -p web/public/_handout/design/fonts
+mkdir -p web/public/design/fonts
 cp node_modules/@fontsource/public-sans/files/public-sans-latin-{400,500,700}-normal.woff2 \
-   web/public/_handout/design/fonts/
+   web/public/design/fonts/
 cp node_modules/@fontsource/ibm-plex-mono/files/ibm-plex-mono-latin-{400,500}-normal.woff2 \
-   web/public/_handout/design/fonts/
-cp node_modules/@fontsource/public-sans/LICENSE   web/public/_handout/design/fonts/OFL-PublicSans.txt
-cp node_modules/@fontsource/ibm-plex-mono/LICENSE web/public/_handout/design/fonts/OFL-IBMPlexMono.txt
+   web/public/design/fonts/
+cp node_modules/@fontsource/public-sans/LICENSE   web/public/design/fonts/OFL-PublicSans.txt
+cp node_modules/@fontsource/ibm-plex-mono/LICENSE web/public/design/fonts/OFL-IBMPlexMono.txt
 npm uninstall -w web @fontsource/public-sans @fontsource/ibm-plex-mono
 ```
 
@@ -321,7 +326,7 @@ accepted for an internal tool.
 
 ## The sample page
 
-<http://handout-5173.localhost/_handout/design-system> shows every base component in every
+<http://handout-5173.localhost/app/design-system> shows every base component in every
 state, with the state's name next to it. It is what a review by hand is held against, and
 the reference later UI stories build from.
 
@@ -337,7 +342,7 @@ undercut the other thing the page shows — its action slot stays **empty**, so 
 the empty case can be held against each other. One sentence in the page's intro points
 upward instead.
 
-`/_handout/design/no-react.html` is the same tokens without React — the shape the password
+`/app/design/no-react.html` is the same tokens without React — the shape the password
 page will have.
 
 ## The components

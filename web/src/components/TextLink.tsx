@@ -4,7 +4,7 @@ import { CheckIcon } from './icons';
 import styles from './TextLink.module.css';
 
 interface CommonProps {
-  /** `strong` is the near-black variant the list uses for the publication's own name. */
+  /** `strong` is the near-black variant the list uses for the handout's own name. */
   strong?: boolean;
   /** Addresses, file names and sizes are set in the mono family. */
   mono?: boolean;

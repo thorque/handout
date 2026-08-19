@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [react()],
+  base: '/app/',
   server: {
     host: '0.0.0.0', // Traefik cannot reach 127.0.0.1
     port: 5173,
@@ -12,15 +13,10 @@ export default defineConfig({
     proxy: {
       // The browser only ever talks to one origin; the service is reached under a
       // relative path. See docs/url-namespace.md.
-      '/_handout/api': { target: 'http://127.0.0.1:3000', changeOrigin: false },
+      '/api': { target: 'http://127.0.0.1:3000', changeOrigin: false },
     },
-    ws: {
-      // Measured (HAN-7): with no path set, the HMR socket sits at "/", which Caddy's
-      // catch-all routes to the service — an upgrade there 404s instead of switching
-      // protocols. Moving it under /_handout/ makes the existing `handle /_handout/*`
-      // block carry it to Vite instead, both directly and through Caddy.
-      path: '/_handout/vite-hmr',
-    },
+    // No `ws.path`: the HMR socket follows `base` (measured in the installed Vite), so it
+    // already sits at /app/, exactly where the `@app` Caddy block carries it.
   },
   test: {
     environment: 'jsdom',

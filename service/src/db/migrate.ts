@@ -14,6 +14,10 @@ const MIGRATIONS_DIR = path.resolve(import.meta.dirname, '../../migrations');
 export interface MigrateOptions {
   /** Where the runner's progress goes. Defaults to the runner's own console output. */
   log?: (message: string) => void;
+  /** 'up' (the default) or 'down', for a test that has to prove the down side too. */
+  direction?: 'up' | 'down';
+  /** How many migrations to run when going down. Passed straight to the runner. */
+  count?: number;
 }
 
 /**
@@ -27,7 +31,7 @@ export function runMigrations(
   return runner({
     databaseUrl: config.databaseUrl,
     dir: MIGRATIONS_DIR,
-    direction: 'up',
+    direction: options.direction ?? 'up',
     migrationsTable: 'pgmigrations',
     schema: config.databaseSchema,
     createSchema: true,
@@ -35,5 +39,6 @@ export function runMigrations(
     // moment must queue up behind the lock instead of one of them dying.
     advisoryLockMode: 'wait',
     ...(options.log === undefined ? {} : { log: options.log }),
+    ...(options.count === undefined ? {} : { count: options.count }),
   });
 }

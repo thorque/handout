@@ -1,20 +1,20 @@
 /**
- * The catch-all delivery route. See "The route shape" in the plan / docs/url-namespace.md
- * for why the split between publication space and the application's own namespace is a
- * single predicate rather than routing priority.
+ * The catch-all delivery route. See docs/url-namespace.md for why the split between
+ * handout space and the application's own namespace is a single predicate rather than
+ * routing priority.
  */
 import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { isReservedPath } from '../namespace';
-import { addressFromPath } from '../publications/address';
-import { resolvePublicationFile } from '../publications/delivery';
+import { addressFromPath } from '../handouts/address';
+import { resolveHandoutFile } from '../handouts/delivery';
 import { sendNotFoundPage } from './not-found';
 
-export interface PublicationRoutesDeps {
+export interface HandoutRoutesDeps {
   handoutsDir: string;
 }
 
-export function publicationRoutes(app: FastifyInstance, deps: PublicationRoutesDeps): void {
+export function handoutRoutes(app: FastifyInstance, deps: HandoutRoutesDeps): void {
   app.get('/*', async (request, reply) => {
     // request.url, not request.params['*']: whether find-my-way percent-decodes a
     // wildcard parameter is unverified, and decoding it ourselves in addressFromPath
@@ -32,15 +32,15 @@ export function publicationRoutes(app: FastifyInstance, deps: PublicationRoutesD
       return;
     }
 
-    const resolved = await resolvePublicationFile(deps.handoutsDir, address.slug, address.rest);
+    const resolved = await resolveHandoutFile(deps.handoutsDir, address.slug, address.rest);
     if (resolved === undefined) {
       sendNotFoundPage(reply);
       return;
     }
 
     return reply.sendFile(
-      path.relative(resolved.realPublicationDir, resolved.realPath),
-      resolved.realPublicationDir,
+      path.relative(resolved.realHandoutDir, resolved.realPath),
+      resolved.realHandoutDir,
     );
   });
 }
