@@ -1,0 +1,69 @@
+name: Checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Read-only: this workflow checks a change, it never writes one.
+permissions:
+  contents: read
+
+# A second push to the same branch makes the first run pointless.
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      # The database suites need a real Postgres. Without one they skip themselves and
+      # the run stays green — a light that cannot turn red. The image is the one the
+      # operating stack uses. This database dies with the runner, so its credentials
+      # belong here and not in a secret: a secret is for a value that also means
+      # something outside the run.
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: handout
+          POSTGRES_PASSWORD: handout
+          POSTGRES_DB: handout_test
+        # Published, because the job runs on the runner itself, not inside a container
+        # on the service network.
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U handout -d handout_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      # 127.0.0.1 and not localhost: the published port is bound on IPv4, and localhost
+      # can resolve to ::1 first. The tests create a schema of their own in this
+      # database, so an empty one is all it has to be.
+      HANDOUT_TEST_DATABASE_URL: postgresql://handout:handout@127.0.0.1:5432/handout_test
+      # The runner sets this itself. Restated here because the test support reads it to
+      # decide that a missing database is a failure rather than a skip — so the
+      # dependency is visible in the file that relies on it.
+      CI: true
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # One step, and the list of checks lives in package.json rather than here:
+      # `verify` is defined as this plus `smoke`, so a check added later cannot reach
+      # the human gate and miss the pipeline. `smoke` is not here — it needs the
+      # service, Vite and Caddy up at once.
+      - run: npm run check
