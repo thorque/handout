@@ -4,6 +4,7 @@ var
 dist
 coverage
 .git
+.github
 .env
 .env.*
 .claude
