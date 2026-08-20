@@ -9,11 +9,26 @@ adds (`WEB_HOST`, `WEB_PORT`).
 
 ## The three handle blocks
 
-| Block                  | What it is for                                                                                                                                                                                                                                                                                                              |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@app` / `handle @app` | the application's own routes and its built assets, including the design layer below them. In the workbench that reaches the Vite dev server; in a deployment `WEB_HOST`/`WEB_PORT` point at the service, which serves the built app.                                                                                        |
-| `@api` / `handle @api` | the HTTP interface. Goes straight to `APP_HOST` (the service) rather than through the dev server — in a deployment `WEB_HOST` is the service anyway, and the browser sees one origin either way because Caddy is the origin. The Vite proxy for `/api` stays, so a direct visit to the dev server's own port keeps working. |
-| `handle` (catch-all)   | everything else is handout space and belongs to the service.                                                                                                                                                                                                                                                                |
+| Block                            | What it is for                                                                                                                                                                                                                                                                                                              |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@app` / `handle @app`           | the application's own routes and its built assets, including the design layer below them. In the workbench that reaches the Vite dev server; in a deployment `WEB_HOST`/`WEB_PORT` point at the service, which serves the built app.                                                                                        |
+| `@api` / `handle @api`           | the HTTP interface. Goes straight to `APP_HOST` (the service) rather than through the dev server — in a deployment `WEB_HOST` is the service anyway, and the browser sees one origin either way because Caddy is the origin. The Vite proxy for `/api` stays, so a direct visit to the dev server's own port keeps working. |
+| `@provider` / `handle @provider` | the instance's identity provider, when it runs beside Handout rather than in a cloud — in the workbench that is Keycloak, reached at `KEYCLOAK_HOST`/`KEYCLOAK_PORT`. Nothing requests these paths at all on an instance whose provider is hosted elsewhere.                                                                |
+| `handle` (catch-all)             | everything else is handout space and belongs to the service.                                                                                                                                                                                                                                                                |
+
+`@provider` lists two path prefixes, not one: `/realms/*` and `/resources/*`. Keycloak's own
+login page loads its assets from `/resources/…` (measured) — without that second handle the
+page still arrives, unstyled, and every one of its assets lands in handout space instead,
+answered by the not-found page. Both segments are matched the exact-segment way `@app` and
+`@api` are, and `service/src/namespace.test.ts` pins that neither word can ever be
+generated as a slug (`cannotBeSlug('realms')`, `cannotBeSlug('resources')`), so a later
+widening of the slug alphabet fails there rather than in a customer's mail.
+
+One honest side note: a delivered artifact that references `/resources/…` with an absolute
+path was already broken on this instance before this divert existed — the reference always
+resolved to handout space, where nothing by that name lives. It is now answered by the
+identity provider instead of by the not-found page, which is a different wrong answer, not
+a new one.
 
 Both `@app` and `@api` list the exact segment and the segment with a slash
 (`path /app /app/*`), not a trailing-wildcard prefix on its own: `/app*` would also match
@@ -62,13 +77,15 @@ it. The port has to match the `caddy` service's `port`/`httpPort` (81 in the wor
 
 ## Variables
 
-| Variable          | Workbench default | Compose value                                       |
-| ----------------- | ----------------- | --------------------------------------------------- |
-| `CADDY_SITE_PORT` | `81`              | `80` (or whatever `HANDOUT_HTTP_PORT` maps to)      |
-| `APP_HOST`        | `workspace`       | `handout` (the compose service name)                |
-| `APP_PORT`        | `3000`            | `3000`                                              |
-| `WEB_HOST`        | `workspace`       | `handout` — the service, which serves the built app |
-| `WEB_PORT`        | `5173`            | `3000`                                              |
+| Variable          | Workbench default | Compose value                                                                          |
+| ----------------- | ----------------- | -------------------------------------------------------------------------------------- |
+| `CADDY_SITE_PORT` | `81`              | `80` (or whatever `HANDOUT_HTTP_PORT` maps to)                                         |
+| `APP_HOST`        | `workspace`       | `handout` (the compose service name)                                                   |
+| `APP_PORT`        | `3000`            | `3000`                                                                                 |
+| `WEB_HOST`        | `workspace`       | `handout` — the service, which serves the built app                                    |
+| `WEB_PORT`        | `5173`            | `3000`                                                                                 |
+| `KEYCLOAK_HOST`   | `keycloak`        | the identity provider's own compose service name, or unset when it is hosted elsewhere |
+| `KEYCLOAK_PORT`   | `8080`            | that provider's port                                                                   |
 
 ## The bind-mount
 

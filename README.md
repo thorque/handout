@@ -31,14 +31,20 @@ with `"status": "degraded"` when the schema is not there.
 
 Everything is read from the environment; `.env` is loaded for local development.
 
-| Variable                  | Meaning                                                                                          |
-| ------------------------- | ------------------------------------------------------------------------------------------------ |
-| `PORT`, `HOST`            | where the service listens; defaults `3000` and `0.0.0.0`                                         |
-| `LOG_LEVEL`               | Fastify's log level, default `info`                                                              |
-| `HANDOUT_DATA_DIR`        | where content lives: `<HANDOUT_DATA_DIR>/handouts/<slug>/`, absolute (default `<repo>/var/data`) |
-| `DATABASE_URL`            | the database; falls back to `POSTGRES_URL`, which the workbench provides                         |
-| `HANDOUT_DATABASE_SCHEMA` | the schema migrations and queries work in, default `public`                                      |
-| `HANDOUT_PASSWORD_KEY`    | **required**, 32 bytes base64 — encrypts handout passwords                                       |
+| Variable                       | Meaning                                                                                                  |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| `PORT`, `HOST`                 | where the service listens; defaults `3000` and `0.0.0.0`                                                 |
+| `LOG_LEVEL`                    | Fastify's log level, default `info`                                                                      |
+| `HANDOUT_DATA_DIR`             | where content lives: `<HANDOUT_DATA_DIR>/handouts/<slug>/`, absolute (default `<repo>/var/data`)         |
+| `DATABASE_URL`                 | the database; falls back to `POSTGRES_URL`, which the workbench provides                                 |
+| `HANDOUT_DATABASE_SCHEMA`      | the schema migrations and queries work in, default `public`                                              |
+| `HANDOUT_PASSWORD_KEY`         | **required**, 32 bytes base64 — encrypts handout passwords                                               |
+| `HANDOUT_OIDC_ISSUER_URL`      | **required** — the identity provider's issuer URL                                                        |
+| `HANDOUT_OIDC_CLIENT_ID`       | **required** — this instance's client id at the provider                                                 |
+| `HANDOUT_OIDC_CLIENT_SECRET`   | **required** — this instance's client secret at the provider                                             |
+| `HANDOUT_ALLOWED_EMAILS`       | **required** — who may publish, domains and addresses; see [`docs/sign-in.md`](docs/sign-in.md)          |
+| `HANDOUT_SIGN_IN_LABEL`        | the sign-in button's caption, default `Mit Firmenkonto anmelden`                                         |
+| `HANDOUT_OIDC_INTERNAL_ORIGIN` | where the service reaches the provider, when that differs from the browser; falls back to `KEYCLOAK_URL` |
 
 `HANDOUT_PASSWORD_KEY` has no default and no fallback: handout passwords have to stay
 readable for their owner, so they are encrypted rather than hashed, and losing the key
@@ -80,6 +86,47 @@ volumes:
 
 under the `caddy` service, followed by `monoceros apply handout`. After that, Caddy
 watches the file: every later edit is live on save.
+
+## The workbench identity provider
+
+Keycloak is the local OIDC provider, and its realm is a file in this repository at
+[`keycloak/realm.json`](keycloak/realm.json) — never configured by hand in the admin
+console, because Keycloak's database is ephemeral and re-seeds from the import directory on
+every apply. The bind-mount that feeds it there lives in the container yml on the host:
+
+```yaml
+volumes:
+  - projects/handout-app/keycloak/realm.json:/opt/keycloak/data/import/handout-app.json:ro
+```
+
+under the `keycloak` service, followed by `monoceros apply handout`. That import only fills
+an _empty_ database, so a later edit to the realm file needs its own step to reach the
+_running_ Keycloak, from the workspace root:
+
+```
+.monoceros/bin/keycloak-realm projects/handout-app/keycloak/realm.json
+```
+
+This replaces the realm from the file — every session, and every secret Keycloak generated
+itself, is gone afterwards, which is why the client secret in that file is a fixed value
+rather than a generated one.
+
+The realm carries one confidential client (`handout`) and six test users, each there for a
+different outcome — see [`docs/sign-in.md`](docs/sign-in.md) for the allow-rule they
+exercise:
+
+| Username | Address                         | Outcome                                 |
+| -------- | ------------------------------- | --------------------------------------- |
+| `jana`   | `j.berger@berger-partner.de`    | allowed, by domain                      |
+| `tim`    | `t.kuhn@extern-gmbh.de`         | allowed, by the single address entry    |
+| `kim`    | `k.lang@fremde-firma.de`        | refused — not on the allow-list         |
+| `mira`   | `m.roth@mail.berger-partner.de` | refused — a subdomain is not the domain |
+| `nils`   | `n.weber@berger-partner.de`     | refused — the address is not verified   |
+| `ohne`   | _(no address at all)_           | refused — no address                    |
+
+All six share the password `handout-dev-password`. Sign in at
+<http://handout-caddy.localhost/app/> — the only workbench origin sign-in can work at all,
+because the browser has to reach the provider through Caddy.
 
 ## Running the compose stack
 
@@ -180,6 +227,9 @@ docs/             decisions that outlive a single story
 - **Published content is a plain directory, deliberately with no storage abstraction.**
   [`docs/data-directory.md`](docs/data-directory.md) has the layout and the resolution
   rules that keep delivery inside a handout's own directory.
+- **One identity provider per instance, publishers only.** [`docs/sign-in.md`](docs/sign-in.md)
+  has the four configuration values, the allow-rule, the session cookie's attributes, and
+  why the provider can answer under two addresses in the workbench.
 
 ## License
 
