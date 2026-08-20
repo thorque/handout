@@ -38,4 +38,12 @@ describe('cannotBeSlug', () => {
     expect(cannotBeSlug('assets')).toBe(false);
     expect(cannotBeSlug('kaffee')).toBe(false);
   });
+
+  // The two segments the proxy diverts to the identity provider before the service ever
+  // sees them (Caddy's `@provider` block) — pinned here so a later widening of the slug
+  // alphabet cannot silently make either one collidable with a generated address.
+  it('holds for the two segments the proxy diverts to the identity provider', () => {
+    expect(cannotBeSlug('realms')).toBe(true); // contains "l", outside the slug alphabet
+    expect(cannotBeSlug('resources')).toBe(true); // contains "o", and nine characters long
+  });
 });

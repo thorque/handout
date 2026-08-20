@@ -37,6 +37,16 @@
 		reverse_proxy {$APP_HOST:workspace}:{$APP_PORT:3000}
 	}
 
+	# The instance's identity provider, when it runs beside Handout rather than in a cloud.
+	# In the workbench that is Keycloak; against a hosted provider nothing ever requests these
+	# paths. /resources/* is not decoration: Keycloak's login page loads its assets from there
+	# (measured), and without this handle the page arrives unstyled and its assets land in
+	# handout space.
+	@provider path /realms /realms/* /resources /resources/*
+	handle @provider {
+		reverse_proxy {$KEYCLOAK_HOST:keycloak}:{$KEYCLOAK_PORT:8080}
+	}
+
 	# Everything else is handout space and belongs to the service.
 	handle {
 		reverse_proxy {$APP_HOST:workspace}:{$APP_PORT:3000}
