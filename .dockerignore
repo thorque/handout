@@ -5,6 +5,7 @@ dist
 coverage
 .git
 .github
+.husky
 .env
 .env.*
 .claude

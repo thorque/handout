@@ -123,6 +123,10 @@ and Caddy up at once, which the pipeline does not bring up. The workflow starts 
 service container and points the database suites at it, so a database that is missing —
 rather than one that fails — cannot leave them skipped behind a green run.
 
+A second, independent job checks the sign-off trailers. It looks at the pull request's own
+commits only — `base.sha..head.sha` — which is why the history from before that rule does
+not go red.
+
 ## Layout
 
 ```
@@ -138,6 +142,7 @@ caddy/Caddyfile   the one proxy config, for the workbench and for a deployment
 Dockerfile        the service image
 compose.yaml      the operating stack: handout + postgres + caddy
 scripts/smoke.ts  the end-to-end check behind `npm run smoke`
+scripts/check-signoff.sh  the sign-off check behind the pull-request `signoff` job
 docs/             decisions that outlive a single story
 ```
 
@@ -145,6 +150,9 @@ docs/             decisions that outlive a single story
 
 - **Everything in this repository is written in English** — code, comments, documentation
   and commit messages.
+- **Every commit carries a `Signed-off-by` trailer** (`git commit -s`). The hook in
+  `.husky/` appends it for you — it exists only after an `npm install` in your clone; the
+  pull-request check enforces it either way. See [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - **TypeScript 7 with oxlint for linting.** The linter is oxlint plus `oxlint-tsgolint`,
   which does type-aware linting against the compiler TypeScript 7 actually ships and
   requires TypeScript 7.0+. The usual alternative, `typescript-eslint`, still declares a
@@ -172,3 +180,19 @@ docs/             decisions that outlive a single story
 - **Published content is a plain directory, deliberately with no storage abstraction.**
   [`docs/data-directory.md`](docs/data-directory.md) has the layout and the resolution
   rules that keep delivery inside a handout's own directory.
+
+## License
+
+Handout is licensed under [Apache-2.0](LICENSE) — chosen over MIT for its explicit patent
+grant. Copyright belongs to the Handout authors.
+
+Contributions need no Contributor License Agreement; every commit instead carries a
+`Signed-off-by` trailer, produced by `git commit -s`. See
+[`CONTRIBUTING.md`](CONTRIBUTING.md) for how and why.
+
+The maintainer may build a closed-source commercial fork of this code — Apache-2.0 §5
+means a contribution arrives already carrying that permission, for everyone, which is why
+no CLA is needed. The open project itself stays under Apache-2.0 either way.
+
+"Handout" and its wordmark are not part of the licence grant — see
+[`TRADEMARKS.md`](TRADEMARKS.md).

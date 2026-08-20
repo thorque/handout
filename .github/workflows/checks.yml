@@ -67,3 +67,21 @@ jobs:
       # the human gate and miss the pipeline. `smoke` is not here — it needs the
       # service, Vite and Caddy up at once.
       - run: npm run check
+
+  signoff:
+    # Only a pull request has a commit range of its own. On a push to main there is
+    # nothing to check, and the history from before this rule carries no sign-off.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The default shallow clone has neither the base commit nor the branch's own
+          # commits, and the range below needs both.
+          fetch-depth: 0
+      - name: Check the sign-off trailers of this pull request's commits
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: bash scripts/check-signoff.sh "$BASE_SHA" "$HEAD_SHA"

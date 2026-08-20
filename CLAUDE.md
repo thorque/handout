@@ -64,6 +64,9 @@ changing anything it touches.
 
 - Everything that goes into this repository is written in English: code, comments,
   documentation, commit messages.
+- Every commit carries a `Signed-off-by` trailer, produced by `git commit -s`. The hook in
+  `.husky/` appends it too, once `npm install` has run in your clone. No CLA — the reason
+  is in `CONTRIBUTING.md`.
 - **`docs/` describes what the code does and why, never what is planned.** No issue keys, no
   links into an issue tracker or wiki, no "this will be added later" — a reader of the
   repository cannot follow any of it, and it is wrong the moment the plan changes. A reason
