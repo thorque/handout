@@ -89,6 +89,37 @@ function statusWithHost(
 }
 
 /**
+ * A full request sent with an explicit `Host` header, following no redirect itself —
+ * the caller reads `statusCode`/`headers`/`body` and decides. Not `fetch`: undici treats
+ * `Host` as forbidden and silently replaces it, the same reason `statusWithHost` exists.
+ */
+function requestWithHost(
+  port: number,
+  path: string,
+  host: string,
+  targetHost = '127.0.0.1',
+): Promise<{ statusCode: number; headers: http.IncomingHttpHeaders; body: string }> {
+  return new Promise((resolve, reject) => {
+    const request = http.request(
+      { host: targetHost, port, path, method: 'GET', headers: { Host: host } },
+      (response) => {
+        const chunks: Buffer[] = [];
+        response.on('data', (chunk: Buffer) => chunks.push(chunk));
+        response.on('end', () => {
+          resolve({
+            statusCode: response.statusCode ?? 0,
+            headers: response.headers,
+            body: Buffer.concat(chunks).toString('utf8'),
+          });
+        });
+      },
+    );
+    request.on('error', reject);
+    request.end();
+  });
+}
+
+/**
  * How long to wait for either a `response` or an `upgrade` before giving up. Measured: a
  * non-socket path under `/app/*` gives neither — Vite answers nothing at all, no
  * `response`, no `upgrade`, no `error` — so without a timeout the promise never settles
@@ -296,8 +327,11 @@ try {
   });
 
   await check('service-404-api', async () => {
+    // Every /api/** path needs a session, including one with no route behind it at all —
+    // so an unrouted path now answers 401, not 404. What this check still protects is the
+    // JSON shape, not a bare 404 — see api-requires-session for the gate itself.
     const response = await fetch(`${SERVICE_ORIGIN}/api/nope`);
-    assert(response.status === 404, `expected 404, got ${response.status}`);
+    assert(response.status === 401, `expected 401, got ${response.status}`);
     assert(
       contentType(response).includes('application/json'),
       `expected JSON, got "${contentType(response)}" — the API contract must not change`,
@@ -724,6 +758,131 @@ try {
       );
     }
     assert(status === 200, `expected 200, got ${status} — the site address may pin a domain`);
+  });
+  await check('api-session-public', async () => {
+    const response = await fetch(`${SERVICE_ORIGIN}/api/auth/session`);
+    assert(response.status === 200, `expected 200, got ${response.status}`);
+    assert(
+      contentType(response).includes('application/json'),
+      `expected JSON, got "${contentType(response)}"`,
+    );
+    const body = (await response.json()) as { signedIn?: boolean; signInLabel?: string };
+    assert(
+      body.signedIn === false,
+      `expected signedIn: false, got ${JSON.stringify(body.signedIn)}`,
+    );
+    assert(
+      typeof body.signInLabel === 'string' && body.signInLabel.length > 0,
+      `expected a non-empty signInLabel, got ${JSON.stringify(body.signInLabel)}`,
+    );
+  });
+
+  await check('service-sign-in-redirect', async () => {
+    const response = await fetch(`${SERVICE_ORIGIN}/api/auth/sign-in`, { redirect: 'manual' });
+    assert(response.status === 302, `expected 302, got ${response.status}`);
+
+    const location = response.headers.get('location');
+    if (location === null) throw new Error('no Location header on the sign-in redirect');
+    const authorizationUrl = new URL(location);
+    for (const param of ['code_challenge', 'state', 'nonce']) {
+      assert(authorizationUrl.searchParams.has(param), `authorization URL is missing ${param}`);
+    }
+    assert(
+      authorizationUrl.searchParams.get('code_challenge_method') === 'S256',
+      'authorization URL does not carry code_challenge_method=S256',
+    );
+    assert(
+      (authorizationUrl.searchParams.get('scope') ?? '').includes('openid'),
+      'authorization URL does not carry scope=openid',
+    );
+
+    const setCookie = response.headers.get('set-cookie') ?? '';
+    assert(setCookie.includes('handout_oidc_flow='), 'no handout_oidc_flow cookie was set');
+    assert(setCookie.includes('HttpOnly'), 'the flow cookie is not HttpOnly');
+    assert(setCookie.includes('Path=/api'), 'the flow cookie is not scoped to Path=/api');
+  });
+
+  await check('api-requires-session', async () => {
+    const unrouted = await fetch(`${SERVICE_ORIGIN}/api/handouts`);
+    assert(unrouted.status === 401, `expected 401, got ${unrouted.status}`);
+    assert(
+      contentType(unrouted).includes('application/json'),
+      `expected JSON, got "${contentType(unrouted)}"`,
+    );
+
+    const health = await fetch(`${SERVICE_ORIGIN}/api/health`);
+    assert(health.status === 200, `expected /api/health to stay 200, got ${health.status}`);
+  });
+
+  await check('proxy-realms', async () => {
+    const response = await proxyFetch(
+      `${PROXY_ORIGIN}/realms/handout/.well-known/openid-configuration`,
+    );
+    assert(response.status === 200, `expected 200, got ${response.status}`);
+    assert(
+      contentType(response).includes('application/json'),
+      `expected JSON, got "${contentType(response)}"`,
+    );
+    const body = (await response.json()) as { issuer?: string };
+    const issuer = body.issuer;
+    if (typeof issuer !== 'string') throw new Error('the discovery document carries no issuer');
+    const issuerOrigin = new URL(issuer).origin;
+    const requestOrigin = new URL(PROXY_ORIGIN).origin;
+    assert(
+      issuerOrigin === requestOrigin,
+      `expected the issuer's origin to equal ${requestOrigin}, got ${issuerOrigin}`,
+    );
+  });
+
+  await check('proxy-sign-in-page', async () => {
+    // The redirect_uri the service builds is derived from the request's own host — so the
+    // browser-facing Host header (handout-caddy.localhost) has to be sent explicitly, the
+    // same reason proxy-host above uses requestWithHost instead of plain fetch.
+    const proxyUrl = new URL(PROXY_ORIGIN);
+    const port = proxyUrl.port === '' ? 80 : Number(proxyUrl.port);
+    const signIn = await requestWithHost(
+      port,
+      '/api/auth/sign-in',
+      'handout-caddy.localhost',
+      proxyUrl.hostname,
+    );
+    assert(signIn.statusCode === 302, `expected 302, got ${signIn.statusCode}`);
+    const location = signIn.headers.location;
+    if (typeof location !== 'string') {
+      throw new Error('no Location header on the sign-in redirect');
+    }
+    const authorizationUrl = new URL(location);
+
+    const page = await requestWithHost(
+      port,
+      authorizationUrl.pathname + authorizationUrl.search,
+      'handout-caddy.localhost',
+      proxyUrl.hostname,
+    );
+    assert(page.statusCode === 200, `expected 200, got ${page.statusCode}`);
+    const pageType = page.headers['content-type'] ?? '';
+    assert(pageType.includes('text/html'), `expected HTML, got "${pageType}"`);
+
+    // This is the check that proves /resources/* is diverted: without that handle the
+    // page still arrives and only its assets 404 — the exact "white page with fifteen
+    // green tests" failure this repeats the reasoning of design-no-react-page against.
+    for (const reference of localReferences(page.body)) {
+      const referencedUrl = new URL(reference, authorizationUrl);
+      const referenced = await requestWithHost(
+        port,
+        referencedUrl.pathname + referencedUrl.search,
+        'handout-caddy.localhost',
+        proxyUrl.hostname,
+      );
+      assert(referenced.statusCode === 200, `${reference} answered ${referenced.statusCode}`);
+      const type = referenced.headers['content-type'] ?? '';
+      // A favicon among Keycloak's own theme assets serves as application/octet-stream,
+      // so this only rejects an HTML error page landing where an asset was expected.
+      assert(
+        type !== '' && !type.includes('html'),
+        `${reference} served as "${type}", an HTML page where an asset was expected`,
+      );
+    }
   });
 } finally {
   rmSync(fixtureDir, { recursive: true, force: true });
