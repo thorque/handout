@@ -51,6 +51,10 @@ jobs:
       # decide that a missing database is a failure rather than a skip — so the
       # dependency is visible in the file that relies on it.
       CI: true
+      # IPv4 literal, same reason as the database URL above. No Caddy in front here, so
+      # issuer and reachable origin are the same address and the workbench shim's other
+      # half (HANDOUT_OIDC_INTERNAL_ORIGIN / KEYCLOAK_URL) stays unset on purpose.
+      HANDOUT_TEST_OIDC_ISSUER_URL: http://127.0.0.1:8080/realms/handout
 
     steps:
       - uses: actions/checkout@v7
@@ -61,6 +65,40 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      # Deviation from the postgres service container above: a service container's mount
+      # is only available once it starts, and it starts before `actions/checkout` runs —
+      # so it cannot mount this repository's realm file. A plain `docker run` after
+      # checkout can. The dev realm's secret and its test users' password mean nothing
+      # outside a throwaway container, so they belong in this file rather than a secret,
+      # exactly the argument already made for the postgres credentials above.
+      - name: Start Keycloak for the OIDC suites
+        run: |
+          docker run -d --name keycloak \
+            -p 8080:8080 \
+            -v "$PWD/keycloak/realm.json:/opt/keycloak/data/import/handout.json:ro" \
+            -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
+            -e KC_BOOTSTRAP_ADMIN_PASSWORD=admin \
+            quay.io/keycloak/keycloak:26.6 \
+            start-dev --import-realm
+
+          # Not /health/ready (management port 9000, not published above): that would
+          # only prove the server answers, not that the realm import — what the OIDC
+          # suites actually depend on — has finished. The realm's own discovery document
+          # 404s until the import is done and 200s once it is, so it is the better probe
+          # for this job.
+          for _ in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8080/realms/handout/.well-known/openid-configuration \
+              >/dev/null 2>&1; then
+              echo "Keycloak is ready, realm imported."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "Keycloak did not become ready in time." >&2
+          docker logs keycloak
+          exit 1
 
       # One step, and the list of checks lives in package.json rather than here:
       # `verify` is defined as this plus `smoke`, so a check added later cannot reach
