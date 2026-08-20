@@ -21,13 +21,20 @@ export interface AuthRoutesDeps {
   signInLabel: string;
 }
 
-/** The `redirect_uri` this instance answers under, built from the request that arrives. */
-function callbackUrl(request: { protocol: string; hostname: string }): string {
-  return `${request.protocol}://${request.hostname}/api/auth/callback`;
+/**
+ * The `redirect_uri` this instance answers under, built from the request that arrives.
+ * `request.host`, not `request.hostname`: Fastify strips the port from `hostname`, and a
+ * deployment behind a non-default port (`HANDOUT_HTTP_PORT`, see `.env.example`) would
+ * otherwise send the provider a redirect_uri missing it — a registration mismatch at the
+ * provider, or a redirect to an address nothing answers on. Measured against this Fastify.
+ */
+function callbackUrl(request: { protocol: string; host: string }): string {
+  return `${request.protocol}://${request.host}/api/auth/callback`;
 }
 
-function currentUrl(request: { protocol: string; hostname: string; url: string }): URL {
-  return new URL(request.url, `${request.protocol}://${request.hostname}`);
+/** Same reasoning as `callbackUrl`: `host`, not `hostname`, to keep a non-default port. */
+function currentUrl(request: { protocol: string; host: string; url: string }): URL {
+  return new URL(request.url, `${request.protocol}://${request.host}`);
 }
 
 export function authRoutes(app: FastifyInstance, deps: AuthRoutesDeps): void {

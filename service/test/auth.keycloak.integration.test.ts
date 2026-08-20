@@ -194,4 +194,19 @@ describeIfKeycloak('sign-in against the workbench Keycloak', () => {
     const location = response.headers.location as string;
     expect(location.startsWith(config.oidcIssuerUrl)).toBe(true);
   });
+
+  it('keeps a non-default port in the redirect_uri it sends to the provider', async () => {
+    // A Host header without a port (every other case in this file, and both scenarios the
+    // plan names for this step) cannot catch request.hostname dropping it — Fastify
+    // strips the port from `hostname` but keeps it on `host`. This is the case that does.
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/auth/sign-in',
+      headers: { host: `${TEST_HOST}:8443` },
+    });
+    expect(response.statusCode).toBe(302);
+    const location = new URL(response.headers.location as string);
+    const redirectUri = location.searchParams.get('redirect_uri');
+    expect(redirectUri).toBe(`http://${TEST_HOST}:8443/api/auth/callback`);
+  });
 });
