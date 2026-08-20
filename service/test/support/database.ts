@@ -57,6 +57,10 @@ function testConfig(schema: string): Config {
     DATABASE_URL: DATABASE_URL,
     HANDOUT_DATABASE_SCHEMA: schema,
     HANDOUT_PASSWORD_KEY: TEST_PASSWORD_KEY,
+    HANDOUT_OIDC_ISSUER_URL: 'http://handout-caddy.localhost/realms/handout',
+    HANDOUT_OIDC_CLIENT_ID: 'handout',
+    HANDOUT_OIDC_CLIENT_SECRET: 'test-secret',
+    HANDOUT_ALLOWED_EMAILS: 'berger-partner.de',
   });
 }
 
