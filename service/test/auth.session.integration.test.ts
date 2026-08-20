@@ -84,7 +84,7 @@ describe('the session gate', () => {
     });
   });
 
-  it('answers 401 for an unrouted /api path even with a valid session, until a route exists', async () => {
+  it('lets a valid session through the gate, so an unrouted /api path still answers 404, not 401', async () => {
     app = buildApp(config, { checkDatabase: () => Promise.resolve(true) });
     const cookie = await validSessionCookie();
     const response = await app.inject({
