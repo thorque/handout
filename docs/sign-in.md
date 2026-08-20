@@ -100,6 +100,17 @@ gate sits on `/api/**` instead: every path there needs a valid session except
 endpoint the coming stories add is covered the moment it exists rather than the moment
 someone remembers to gate it.
 
+## The dev realm turns off "Verify Profile"
+
+`keycloak/realm.json` disables the realm's `VERIFY_PROFILE` required action
+(`requiredActions`, `alias: "VERIFY_PROFILE"`, `enabled: false`). Keycloak's default user
+profile marks the email attribute required, and without this override a user who has none
+— `ohne`, the test user for the `no_email` refusal — gets redirected into a "complete your
+profile" step at Keycloak instead of back to `/api/auth/callback`. That user only exists to
+prove the allow-rule refuses a missing address; disabling the required action is what lets
+the sign-in flow reach the point where it can. A real instance's provider is configured by
+whoever runs it, not by this file, and carries no opinion either way.
+
 ## Dev-only values
 
 The dev realm's client secret and its six test users' password

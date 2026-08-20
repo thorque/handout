@@ -113,7 +113,8 @@ rather than a generated one.
 
 The realm carries one confidential client (`handout`) and six test users, each there for a
 different outcome — see [`docs/sign-in.md`](docs/sign-in.md) for the allow-rule they
-exercise:
+exercise, and for why the realm turns Keycloak's "Verify Profile" required action off
+(needed for `ohne`, the one with no address at all):
 
 | Username | Address                         | Outcome                                 |
 | -------- | ------------------------------- | --------------------------------------- |
