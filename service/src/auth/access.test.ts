@@ -48,10 +48,7 @@ describe('decideAccess', () => {
   it('refuses the suffix-comparison trap', () => {
     const list = parseAllowList('berger-partner.de');
     expect(
-      decideAccess(
-        { email: 'x@berger-partner.de.angreifer.example', emailVerified: true },
-        list,
-      ),
+      decideAccess({ email: 'x@berger-partner.de.angreifer.example', emailVerified: true }, list),
     ).toEqual({ allowed: false, refusal: 'not_permitted' });
   });
 
@@ -64,9 +61,10 @@ describe('decideAccess', () => {
 
   it('refuses a different address at the same domain as a listed address', () => {
     const list = parseAllowList('t.kuhn@extern-gmbh.de');
-    expect(
-      decideAccess({ email: 'other@extern-gmbh.de', emailVerified: true }, list),
-    ).toEqual({ allowed: false, refusal: 'not_permitted' });
+    expect(decideAccess({ email: 'other@extern-gmbh.de', emailVerified: true }, list)).toEqual({
+      allowed: false,
+      refusal: 'not_permitted',
+    });
   });
 
   it('refuses an unverified address before the domain/address rule runs', () => {

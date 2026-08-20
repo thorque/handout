@@ -168,9 +168,7 @@ function readOidcInternalOrigin(
     throw new Error(`HANDOUT_OIDC_INTERNAL_ORIGIN must be an origin, got "${value}"`);
   }
   if (url.pathname !== '/' && url.pathname !== '') {
-    throw new Error(
-      `HANDOUT_OIDC_INTERNAL_ORIGIN must be an origin with no path, got "${value}"`,
-    );
+    throw new Error(`HANDOUT_OIDC_INTERNAL_ORIGIN must be an origin with no path, got "${value}"`);
   }
   return url.origin;
 }

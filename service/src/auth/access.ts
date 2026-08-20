@@ -70,7 +70,7 @@ export function parseAllowList(raw: string): AllowList {
  * never creates an owner without an address, even though `owner_email` stays nullable.
  */
 export function decideAccess(
-  claims: { email?: string; emailVerified?: boolean },
+  claims: { email?: string | undefined; emailVerified?: boolean | undefined },
   list: AllowList,
 ): { allowed: true } | { allowed: false; refusal: Refusal } {
   const email = claims.email?.trim();
