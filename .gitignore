@@ -1,5 +1,7 @@
 # Internal working agreement, not shared through the repository
 .claude/CLAUDE.md
+# Local tool state (per-user permission grants), not shared through the repository
+.claude/settings.local.json
 
 node_modules/
 dist/
