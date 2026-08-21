@@ -22,6 +22,9 @@ export interface Config {
   oidcInternalOrigin: string | undefined;
   sessionKey: Buffer;
   maxUploadBytes: number;
+  maxUnpackedBytes: number;
+  maxZipEntries: number;
+  maxCompressionRatio: number;
 }
 
 const DEFAULT_DATA_DIR = path.resolve(import.meta.dirname, '../../var/data');
@@ -30,10 +33,31 @@ const DEFAULT_DATA_DIR = path.resolve(import.meta.dirname, '../../var/data');
 const PASSWORD_KEY_BYTES = 32;
 
 /**
- * 25 MB. A Claude artifact with embedded images is rarely larger, and the same limit will
- * serve the zip upload of a later story.
+ * 25 MB. A Claude artifact with embedded images is rarely larger, and the same limit caps
+ * the zip upload as it is posted — the unpacked tree it expands to is capped separately by
+ * {@link DEFAULT_MAX_UNPACKED_BYTES}.
  */
 const DEFAULT_MAX_UPLOAD_BYTES = 26_214_400;
+
+/**
+ * 100 MB, four times the upload limit: an export is mostly already-compressed media plus
+ * text and JS that deflate around 4:1, so this covers a full-size upload with headroom and
+ * still bounds the disk and the time spent inflating.
+ */
+const DEFAULT_MAX_UNPACKED_BYTES = 104_857_600;
+
+/**
+ * A Claude Design export is a handful of documents plus assets; even a heavy one stays in
+ * the low hundreds. An order of magnitude of headroom, while bounding inodes per handout
+ * and the pre-flight's own work.
+ */
+const DEFAULT_MAX_ZIP_ENTRIES = 2000;
+
+/**
+ * Text and JS deflate 3-8x, a repetitive dataset can reach the low hundreds; a zip bomb
+ * needs thousands to matter.
+ */
+const DEFAULT_MAX_COMPRESSION_RATIO = 200;
 
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
@@ -90,6 +114,37 @@ function readMaxUploadBytes(raw: string | undefined): number {
     throw new Error(`HANDOUT_MAX_UPLOAD_BYTES must be an integer greater than zero, got "${raw}"`);
   }
   return bytes;
+}
+
+function readMaxUnpackedBytes(raw: string | undefined): number {
+  if (raw === undefined || raw === '') return DEFAULT_MAX_UNPACKED_BYTES;
+  const bytes = Number(raw);
+  if (!Number.isInteger(bytes) || bytes <= 0) {
+    throw new Error(
+      `HANDOUT_MAX_UNPACKED_BYTES must be an integer greater than zero, got "${raw}"`,
+    );
+  }
+  return bytes;
+}
+
+function readMaxZipEntries(raw: string | undefined): number {
+  if (raw === undefined || raw === '') return DEFAULT_MAX_ZIP_ENTRIES;
+  const entries = Number(raw);
+  if (!Number.isInteger(entries) || entries <= 0) {
+    throw new Error(`HANDOUT_MAX_ZIP_ENTRIES must be an integer greater than zero, got "${raw}"`);
+  }
+  return entries;
+}
+
+function readMaxCompressionRatio(raw: string | undefined): number {
+  if (raw === undefined || raw === '') return DEFAULT_MAX_COMPRESSION_RATIO;
+  const ratio = Number(raw);
+  if (!Number.isInteger(ratio) || ratio <= 0) {
+    throw new Error(
+      `HANDOUT_MAX_COMPRESSION_RATIO must be an integer greater than zero, got "${raw}"`,
+    );
+  }
+  return ratio;
 }
 
 function readDatabaseSchema(raw: string | undefined): string {
@@ -242,6 +297,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     env.KEYCLOAK_URL,
   );
   const maxUploadBytes = readMaxUploadBytes(env.HANDOUT_MAX_UPLOAD_BYTES);
+  const maxUnpackedBytes = readMaxUnpackedBytes(env.HANDOUT_MAX_UNPACKED_BYTES);
+  const maxZipEntries = readMaxZipEntries(env.HANDOUT_MAX_ZIP_ENTRIES);
+  const maxCompressionRatio = readMaxCompressionRatio(env.HANDOUT_MAX_COMPRESSION_RATIO);
 
   return {
     port,
@@ -259,5 +317,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     oidcInternalOrigin,
     sessionKey: deriveSessionKey(passwordKey),
     maxUploadBytes,
+    maxUnpackedBytes,
+    maxZipEntries,
+    maxCompressionRatio,
   };
 }
