@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { displayNameFrom, isHtmlFilename, MAX_DISPLAY_NAME_LENGTH } from './upload';
+import { displayNameFrom, isHtmlFilename, isZipFilename, MAX_DISPLAY_NAME_LENGTH } from './upload';
 
 describe('isHtmlFilename', () => {
   it('accepts .html, case-insensitively', () => {
@@ -16,6 +16,32 @@ describe('isHtmlFilename', () => {
 
   it('rejects a filename with no extension at all', () => {
     expect(isHtmlFilename('prototyp')).toBe(false);
+  });
+
+  it('rejects a .zip file', () => {
+    expect(isHtmlFilename('prototyp.zip')).toBe(false);
+  });
+});
+
+describe('isZipFilename', () => {
+  it('accepts .ZIP, case-insensitively', () => {
+    expect(isZipFilename('prototyp.ZIP')).toBe(true);
+  });
+
+  it('accepts .zip', () => {
+    expect(isZipFilename('prototyp.zip')).toBe(true);
+  });
+
+  it('rejects a double extension that does not end in .zip', () => {
+    expect(isZipFilename('prototyp.zip.txt')).toBe(false);
+  });
+
+  it('rejects a filename with no extension at all', () => {
+    expect(isZipFilename('prototyp')).toBe(false);
+  });
+
+  it('rejects an .html file', () => {
+    expect(isZipFilename('prototyp.html')).toBe(false);
   });
 });
 
@@ -50,5 +76,10 @@ describe('displayNameFrom', () => {
     const longFilename = `${'a'.repeat(MAX_DISPLAY_NAME_LENGTH + 1)}.html`;
     const result = displayNameFrom(undefined, longFilename);
     expect(result).toEqual({ ok: true, displayName: 'a'.repeat(MAX_DISPLAY_NAME_LENGTH) });
+  });
+
+  it('derives a display name from a .zip filename the same way — extension-agnostic', () => {
+    const result = displayNameFrom(undefined, 'prototyp.zip');
+    expect(result).toEqual({ ok: true, displayName: 'prototyp' });
   });
 });
