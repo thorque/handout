@@ -126,6 +126,28 @@ gate sits on `/api/**` instead: every path there needs a valid session except
 endpoint the coming stories add is covered the moment it exists rather than the moment
 someone remembers to gate it.
 
+## The provider's own page is not ours to design
+
+One click leads from the sign-in page to the provider's, and that page looks nothing like
+Handout. That is deliberate, and it is not a matter of effort. In an instance the page
+belongs to Microsoft Entra, to Google Workspace, or to the customer's own Keycloak, and it
+is where somebody types their **company** password. There it has to look like the sign-in
+they know from every other internal tool — not like the application it happens to lead
+into.
+
+A sign-in page dressed as the application behind it, rather than as the provider the
+password belongs to, has the shape of a phishing page. People are taught to check, before
+typing a password, that they are at the provider they expect; styling that page after
+Handout would undermine exactly that check. Handout has no say there anyway, which is the
+smaller half of the reason.
+
+Continuity is carried by the **caption instead of the styling**, which is why
+`HANDOUT_SIGN_IN_LABEL` is configurable: the default reads "Mit Firmenkonto anmelden", an
+instance on Entra writes "Mit Entra anmelden". The click then says where it leads, and the
+change in appearance is expected rather than surprising. The unbranded Keycloak screen in
+the workbench is the local test provider, and theming it would be work with no counterpart
+in an instance — worse, it would teach an expectation that does not hold.
+
 ## The dev realm turns off "Verify Profile"
 
 `keycloak/realm.json` disables the realm's `VERIFY_PROFILE` required action
