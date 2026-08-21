@@ -15,7 +15,7 @@ import type { CreateHandoutInput, Handout } from '../src/handouts/repository';
 import { stagingDir } from '../src/handouts/storage';
 import { generateSlug } from '../src/slug';
 import { stubHandoutRepository } from './support/handouts';
-import { multipartFormData } from './support/multipart';
+import { multipartFormData, multipartRequest } from './support/multipart';
 import { validSessionCookie } from './support/session';
 
 /** A small limit, so the size cases need kilobytes rather than the real 25 MB default. */
@@ -241,6 +241,103 @@ describe('POST /api/handouts, the refusals the endpoint decides on its own', () 
     app = built.app;
 
     const response = await upload(undefined, '.html', '<p>x</p>');
+
+    expect(response.statusCode).toBe(400);
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectCleanStaging();
+  });
+});
+
+describe('POST /api/handouts, part order and shape the endpoint cannot dictate', () => {
+  it('still picks up displayName when it is sent after the file part', async () => {
+    const built = buildAppWith(async (input) => fixedHandout(input.displayName));
+    app = built.app;
+    const form = multipartRequest([
+      {
+        kind: 'file',
+        fieldname: 'file',
+        filename: 'eins.html',
+        contentType: 'text/html',
+        content: '<p>eins</p>',
+      },
+      { kind: 'field', name: 'displayName', value: 'Nach der Datei' },
+    ]);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/handouts',
+      headers: form.headers,
+      payload: form.payload,
+      cookies: { handout_session: cookie },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect((response.json() as { displayName: string }).displayName).toBe('Nach der Datei');
+  });
+
+  it('ignores a file part under an unrelated field name and still accepts the real one', async () => {
+    const built = buildAppWith(async (input) => fixedHandout(input.displayName));
+    app = built.app;
+    const form = multipartRequest([
+      { kind: 'field', name: 'displayName', value: 'Mit Anhang' },
+      {
+        kind: 'file',
+        fieldname: 'thumbnail',
+        filename: 'zwei.html',
+        contentType: 'text/html',
+        content: '<p>zwei</p>',
+      },
+      {
+        kind: 'file',
+        fieldname: 'file',
+        filename: 'eins.html',
+        contentType: 'text/html',
+        content: '<p>eins</p>',
+      },
+    ]);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/handouts',
+      headers: form.headers,
+      payload: form.payload,
+      cookies: { handout_session: cookie },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = response.json() as { message?: string };
+    expect(body.message).toBeUndefined();
+    expect(built.createHandout).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers a request with two file parts instead of hanging, and leaves no staging directory behind', async () => {
+    const built = buildAppWith();
+    app = built.app;
+    const form = multipartRequest([
+      { kind: 'field', name: 'displayName', value: 'Zwei' },
+      {
+        kind: 'file',
+        fieldname: 'file',
+        filename: 'eins.html',
+        contentType: 'text/html',
+        content: '<p>eins</p>',
+      },
+      {
+        kind: 'file',
+        fieldname: 'file',
+        filename: 'zwei.html',
+        contentType: 'text/html',
+        content: '<p>zwei</p>',
+      },
+    ]);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/handouts',
+      headers: form.headers,
+      payload: form.payload,
+      cookies: { handout_session: cookie },
+    });
 
     expect(response.statusCode).toBe(400);
     expect(built.createHandout).not.toHaveBeenCalled();
