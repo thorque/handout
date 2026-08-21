@@ -59,6 +59,17 @@ break addresses that already sit in customer mails. The namespace is reversible 
 then, which is why it is decided here and written down rather than left to the story that
 needs it.
 
+## `/realms/*` and `/resources/*` are diverted, not reserved
+
+The identity provider's paths, `/realms/*` and `/resources/*`, never reach the service at
+all: Caddy's `@provider` block answers them directly (see [`docs/proxy.md`](proxy.md)).
+They are therefore not a fourth application segment, and `isReservedPath` does not know
+them — the service never has to decide who owns them, because the request never arrives.
+The same safety rule still has to hold, though: neither word may ever be generated as a
+slug, or a proxy in front of a differently-configured instance could route a real handout
+address to the provider instead of to its content. `cannotBeSlug` in
+`service/src/namespace.ts` covers both, next to the three reserved segments above.
+
 ## The asymmetry between `index.html` and the design layer
 
 `web/index.html` is transformed by Vite: a `/`-absolute reference inside it is rewritten

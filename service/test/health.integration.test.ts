@@ -22,6 +22,10 @@ const config = loadConfig({
   LOG_LEVEL: 'silent',
   POSTGRES_URL: 'postgresql://user:pass@host:5432/db',
   HANDOUT_PASSWORD_KEY: Buffer.alloc(32, 7).toString('base64'),
+  HANDOUT_OIDC_ISSUER_URL: 'http://handout-caddy.localhost/realms/handout',
+  HANDOUT_OIDC_CLIENT_ID: 'handout',
+  HANDOUT_OIDC_CLIENT_SECRET: 'test-secret',
+  HANDOUT_ALLOWED_EMAILS: 'berger-partner.de',
   HANDOUT_DATA_DIR: dataDir,
 });
 

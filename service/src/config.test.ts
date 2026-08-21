@@ -9,6 +9,10 @@ const TEST_KEY = Buffer.alloc(32, 7).toString('base64');
 const REQUIRED = {
   POSTGRES_URL: 'postgresql://user:pass@host:5432/db',
   HANDOUT_PASSWORD_KEY: TEST_KEY,
+  HANDOUT_OIDC_ISSUER_URL: 'http://handout-caddy.localhost/realms/handout',
+  HANDOUT_OIDC_CLIENT_ID: 'handout',
+  HANDOUT_OIDC_CLIENT_SECRET: 'test-secret',
+  HANDOUT_ALLOWED_EMAILS: 'berger-partner.de, t.kuhn@extern-gmbh.de',
 };
 
 describe('loadConfig', () => {
@@ -21,6 +25,8 @@ describe('loadConfig', () => {
     expect(path.isAbsolute(config.dataDir)).toBe(true);
     expect(config.dataDir.endsWith(path.join('var', 'data'))).toBe(true);
     expect(config.databaseSchema).toBe('public');
+    expect(config.signInLabel).toBe('Mit Firmenkonto anmelden');
+    expect(config.oidcInternalOrigin).toBeUndefined();
   });
 
   it('rejects a port outside the valid range', () => {
@@ -80,6 +86,12 @@ describe('loadConfig', () => {
       DATABASE_URL: 'postgresql://own:secret@db:5432/handout',
       HANDOUT_DATABASE_SCHEMA: 'handout_test_1',
       HANDOUT_PASSWORD_KEY: TEST_KEY,
+      HANDOUT_OIDC_ISSUER_URL: 'https://id.example.com/realms/handout',
+      HANDOUT_OIDC_CLIENT_ID: 'handout',
+      HANDOUT_OIDC_CLIENT_SECRET: 'super-secret',
+      HANDOUT_ALLOWED_EMAILS: 'berger-partner.de',
+      HANDOUT_SIGN_IN_LABEL: 'Mit Testkonto anmelden',
+      HANDOUT_OIDC_INTERNAL_ORIGIN: 'http://keycloak:8080',
     });
 
     expect(config).toEqual({
@@ -90,7 +102,90 @@ describe('loadConfig', () => {
       databaseUrl: 'postgresql://own:secret@db:5432/handout',
       databaseSchema: 'handout_test_1',
       passwordKey: Buffer.from(TEST_KEY, 'base64'),
+      oidcIssuerUrl: 'https://id.example.com/realms/handout',
+      oidcClientId: 'handout',
+      oidcClientSecret: 'super-secret',
+      allowedEmails: { domains: ['berger-partner.de'], addresses: [] },
+      signInLabel: 'Mit Testkonto anmelden',
+      oidcInternalOrigin: 'http://keycloak:8080',
+      sessionKey: config.sessionKey,
     });
+  });
+
+  it('refuses an issuer URL that is not an absolute URL', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_OIDC_ISSUER_URL: 'not a url' })).toThrow(
+      /HANDOUT_OIDC_ISSUER_URL/,
+    );
+  });
+
+  it('refuses an http issuer on a real hostname', () => {
+    expect(() =>
+      loadConfig({ ...REQUIRED, HANDOUT_OIDC_ISSUER_URL: 'http://id.example.com/realms/x' }),
+    ).toThrow(/HANDOUT_OIDC_ISSUER_URL/);
+  });
+
+  it('accepts an http issuer on a *.localhost name', () => {
+    const config = loadConfig({
+      ...REQUIRED,
+      HANDOUT_OIDC_ISSUER_URL: 'http://handout-caddy.localhost/realms/handout',
+    });
+    expect(config.oidcIssuerUrl).toBe('http://handout-caddy.localhost/realms/handout');
+  });
+
+  it('strips a trailing slash from the issuer URL', () => {
+    const config = loadConfig({
+      ...REQUIRED,
+      HANDOUT_OIDC_ISSUER_URL: 'http://handout-caddy.localhost/realms/handout/',
+    });
+    expect(config.oidcIssuerUrl).toBe('http://handout-caddy.localhost/realms/handout');
+  });
+
+  it('refuses to start without a client id', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_OIDC_CLIENT_ID: '' })).toThrow(
+      /HANDOUT_OIDC_CLIENT_ID/,
+    );
+  });
+
+  it('refuses to start without a client secret', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_OIDC_CLIENT_SECRET: '' })).toThrow(
+      /HANDOUT_OIDC_CLIENT_SECRET/,
+    );
+  });
+
+  it('refuses to start with an empty allow list', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_ALLOWED_EMAILS: '' })).toThrow(
+      /HANDOUT_ALLOWED_EMAILS/,
+    );
+  });
+
+  it('refuses an internal origin that carries a path', () => {
+    expect(() =>
+      loadConfig({
+        ...REQUIRED,
+        HANDOUT_OIDC_INTERNAL_ORIGIN: 'http://keycloak:8080/realms/handout',
+      }),
+    ).toThrow(/HANDOUT_OIDC_INTERNAL_ORIGIN/);
+  });
+
+  it('falls back to KEYCLOAK_URL for the internal origin', () => {
+    const config = loadConfig({ ...REQUIRED, KEYCLOAK_URL: 'http://keycloak:8080' });
+    expect(config.oidcInternalOrigin).toBe('http://keycloak:8080');
+  });
+
+  it('defaults the sign-in label', () => {
+    expect(loadConfig(REQUIRED).signInLabel).toBe('Mit Firmenkonto anmelden');
+  });
+
+  it('falls back to the default sign-in label when it is set but blank', () => {
+    expect(loadConfig({ ...REQUIRED, HANDOUT_SIGN_IN_LABEL: '   ' }).signInLabel).toBe(
+      'Mit Firmenkonto anmelden',
+    );
+  });
+
+  it('derives a 32-byte session key that differs from the password key', () => {
+    const config = loadConfig(REQUIRED);
+    expect(config.sessionKey.length).toBe(32);
+    expect(config.sessionKey.equals(config.passwordKey)).toBe(false);
   });
 
   it('carries exactly this key set — a guard, not a discovery', () => {
@@ -106,6 +201,13 @@ describe('loadConfig', () => {
         'databaseUrl',
         'databaseSchema',
         'passwordKey',
+        'oidcIssuerUrl',
+        'oidcClientId',
+        'oidcClientSecret',
+        'allowedEmails',
+        'signInLabel',
+        'oidcInternalOrigin',
+        'sessionKey',
       ].sort(),
     );
   });

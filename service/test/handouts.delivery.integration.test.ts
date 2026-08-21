@@ -30,6 +30,10 @@ beforeAll(async () => {
     LOG_LEVEL: 'silent',
     POSTGRES_URL: 'postgresql://user:pass@host:5432/db',
     HANDOUT_PASSWORD_KEY: Buffer.alloc(32, 7).toString('base64'),
+    HANDOUT_OIDC_ISSUER_URL: 'http://handout-caddy.localhost/realms/handout',
+    HANDOUT_OIDC_CLIENT_ID: 'handout',
+    HANDOUT_OIDC_CLIENT_SECRET: 'test-secret',
+    HANDOUT_ALLOWED_EMAILS: 'berger-partner.de',
     HANDOUT_DATA_DIR: dataDir,
   });
   app = buildApp(config, { checkDatabase: () => Promise.resolve(true) });
@@ -157,9 +161,12 @@ describe('handout delivery', () => {
   });
 
   it('keeps the API contract: a missing API route stays JSON', async () => {
+    // Every /api/** path needs a session now, including one with no route behind
+    // it at all — see service/test/auth.session.integration.test.ts for the full gate.
+    // What this test still protects: the JSON shape, not a bare 404.
     const response = await app.inject({ method: 'GET', url: '/api/nope' });
 
-    expect(response.statusCode).toBe(404);
+    expect(response.statusCode).toBe(401);
     expect(response.headers['content-type']).toMatch(/^application\/json/);
   });
 

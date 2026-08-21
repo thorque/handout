@@ -1,4 +1,6 @@
+import { hkdfSync } from 'node:crypto';
 import path from 'node:path';
+import { parseAllowList, type AllowList } from './auth/access';
 
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'] as const;
 
@@ -12,6 +14,13 @@ export interface Config {
   databaseUrl: string;
   databaseSchema: string;
   passwordKey: Buffer;
+  oidcIssuerUrl: string;
+  oidcClientId: string;
+  oidcClientSecret: string;
+  allowedEmails: AllowList;
+  signInLabel: string;
+  oidcInternalOrigin: string | undefined;
+  sessionKey: Buffer;
 }
 
 const DEFAULT_DATA_DIR = path.resolve(import.meta.dirname, '../../var/data');
@@ -72,6 +81,98 @@ function readDatabaseSchema(raw: string | undefined): string {
   return raw;
 }
 
+/** The prototype's own default caption — configuration-driven, never hard-coded in the UI. */
+const DEFAULT_SIGN_IN_LABEL = 'Mit Firmenkonto anmelden';
+
+/** The derivation's info label: domain separation, so a change here changes every cookie. */
+const SESSION_KEY_INFO = 'handout session cookie v1';
+const SESSION_KEY_BYTES = 32;
+
+/** Local names an http issuer is tolerated on — everywhere else it is a misconfiguration. */
+function isLocalHttpHost(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname.endsWith('.localhost') ||
+    hostname === '127.0.0.1' ||
+    hostname === '[::1]' ||
+    hostname === '::1'
+  );
+}
+
+function readOidcIssuerUrl(raw: string | undefined): string {
+  if (raw === undefined || raw === '') {
+    throw new Error('HANDOUT_OIDC_ISSUER_URL must be set to the provider issuer URL');
+  }
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(`HANDOUT_OIDC_ISSUER_URL must be an absolute URL, got "${raw}"`);
+  }
+  if (url.protocol === 'http:' && !isLocalHttpHost(url.hostname)) {
+    throw new Error(
+      `HANDOUT_OIDC_ISSUER_URL must use https on a real hostname, got "${raw}" — http is ` +
+        'accepted only for localhost, a *.localhost name, 127.0.0.1 or [::1]',
+    );
+  }
+  return url.toString().replace(/\/$/, '');
+}
+
+function readOidcClientId(raw: string | undefined): string {
+  const trimmed = raw?.trim() ?? '';
+  if (trimmed === '') {
+    throw new Error('HANDOUT_OIDC_CLIENT_ID must be set to the provider client id');
+  }
+  return trimmed;
+}
+
+function readOidcClientSecret(raw: string | undefined): string {
+  const trimmed = raw?.trim() ?? '';
+  if (trimmed === '') {
+    throw new Error('HANDOUT_OIDC_CLIENT_SECRET must be set to the provider client secret');
+  }
+  return trimmed;
+}
+
+function readAllowedEmails(raw: string | undefined): AllowList {
+  if (raw === undefined || raw.trim() === '') {
+    throw new Error(
+      'HANDOUT_ALLOWED_EMAILS must be set — a missing or empty list would let everybody ' +
+        'publish here',
+    );
+  }
+  return parseAllowList(raw);
+}
+
+function readSignInLabel(raw: string | undefined): string {
+  const trimmed = raw?.trim() ?? '';
+  return trimmed === '' ? DEFAULT_SIGN_IN_LABEL : trimmed;
+}
+
+/**
+ * The workbench publishes where its provider actually answers, mirroring `readDatabaseUrl`'s
+ * fallback to `POSTGRES_URL` — a checkout in the workbench needs no entry in any file.
+ * `undefined` in production, where no such fallback exists.
+ */
+function readOidcInternalOrigin(
+  raw: string | undefined,
+  fallback: string | undefined,
+): string | undefined {
+  const value = raw !== undefined && raw !== '' ? raw : fallback;
+  if (value === undefined || value === '') return undefined;
+
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`HANDOUT_OIDC_INTERNAL_ORIGIN must be an origin, got "${value}"`);
+  }
+  if (url.pathname !== '/' && url.pathname !== '') {
+    throw new Error(`HANDOUT_OIDC_INTERNAL_ORIGIN must be an origin with no path, got "${value}"`);
+  }
+  return url.origin;
+}
+
 function readPasswordKey(raw: string | undefined): Buffer {
   if (raw === undefined || raw === '') {
     throw new Error(
@@ -96,15 +197,49 @@ function readPasswordKey(raw: string | undefined): Buffer {
   return key;
 }
 
+/**
+ * Derived, not read: no second required secret to forget, domain separation from the
+ * password ciphertext by the `info` label, and the only consequence of the key changing is
+ * that everyone signs in again. The password key is already the one value the operator has
+ * to keep and back up.
+ */
+function deriveSessionKey(passwordKey: Buffer): Buffer {
+  return Buffer.from(hkdfSync('sha256', passwordKey, '', SESSION_KEY_INFO, SESSION_KEY_BYTES));
+}
+
 /** Reads the service configuration from an environment, rejecting every bad value loudly. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
+  const port = readPort(env.PORT);
+  const host = readHost(env.HOST);
+  const logLevel = readLogLevel(env.LOG_LEVEL);
+  const dataDir = readDataDir(env.HANDOUT_DATA_DIR);
+  const databaseUrl = readDatabaseUrl(env.DATABASE_URL, env.POSTGRES_URL);
+  const databaseSchema = readDatabaseSchema(env.HANDOUT_DATABASE_SCHEMA);
+  const passwordKey = readPasswordKey(env.HANDOUT_PASSWORD_KEY);
+  const oidcIssuerUrl = readOidcIssuerUrl(env.HANDOUT_OIDC_ISSUER_URL);
+  const oidcClientId = readOidcClientId(env.HANDOUT_OIDC_CLIENT_ID);
+  const oidcClientSecret = readOidcClientSecret(env.HANDOUT_OIDC_CLIENT_SECRET);
+  const allowedEmails = readAllowedEmails(env.HANDOUT_ALLOWED_EMAILS);
+  const signInLabel = readSignInLabel(env.HANDOUT_SIGN_IN_LABEL);
+  const oidcInternalOrigin = readOidcInternalOrigin(
+    env.HANDOUT_OIDC_INTERNAL_ORIGIN,
+    env.KEYCLOAK_URL,
+  );
+
   return {
-    port: readPort(env.PORT),
-    host: readHost(env.HOST),
-    logLevel: readLogLevel(env.LOG_LEVEL),
-    dataDir: readDataDir(env.HANDOUT_DATA_DIR),
-    databaseUrl: readDatabaseUrl(env.DATABASE_URL, env.POSTGRES_URL),
-    databaseSchema: readDatabaseSchema(env.HANDOUT_DATABASE_SCHEMA),
-    passwordKey: readPasswordKey(env.HANDOUT_PASSWORD_KEY),
+    port,
+    host,
+    logLevel,
+    dataDir,
+    databaseUrl,
+    databaseSchema,
+    passwordKey,
+    oidcIssuerUrl,
+    oidcClientId,
+    oidcClientSecret,
+    allowedEmails,
+    signInLabel,
+    oidcInternalOrigin,
+    sessionKey: deriveSessionKey(passwordKey),
   };
 }

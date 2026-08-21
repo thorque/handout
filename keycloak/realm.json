@@ -1,0 +1,124 @@
+{
+  "realm": "handout",
+  "enabled": true,
+  "sslRequired": "none",
+  "clients": [
+    {
+      "clientId": "handout",
+      "enabled": true,
+      "publicClient": false,
+      "secret": "development-only-secret-never-use",
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "webOrigins": [],
+      "redirectUris": ["http://handout-caddy.localhost/api/auth/callback", "/api/auth/callback"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "jana",
+      "enabled": true,
+      "firstName": "Jana",
+      "lastName": "Berger",
+      "email": "j.berger@berger-partner.de",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "handout-dev-password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "tim",
+      "enabled": true,
+      "firstName": "Tim",
+      "lastName": "Kuhn",
+      "email": "t.kuhn@extern-gmbh.de",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "handout-dev-password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "kim",
+      "enabled": true,
+      "firstName": "Kim",
+      "lastName": "Lang",
+      "email": "k.lang@fremde-firma.de",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "handout-dev-password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "mira",
+      "enabled": true,
+      "firstName": "Mira",
+      "lastName": "Roth",
+      "email": "m.roth@mail.berger-partner.de",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "handout-dev-password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "nils",
+      "enabled": true,
+      "firstName": "Nils",
+      "lastName": "Weber",
+      "email": "n.weber@berger-partner.de",
+      "emailVerified": false,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "handout-dev-password",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "ohne",
+      "enabled": true,
+      "firstName": "Ohne",
+      "lastName": "Adresse",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "handout-dev-password",
+          "temporary": false
+        }
+      ]
+    }
+  ],
+  "requiredActions": [
+    {
+      "alias": "VERIFY_PROFILE",
+      "name": "Verify Profile",
+      "providerId": "VERIFY_PROFILE",
+      "enabled": false,
+      "defaultAction": false,
+      "priority": 100,
+      "config": {}
+    }
+  ]
+}
