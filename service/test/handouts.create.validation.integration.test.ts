@@ -131,6 +131,42 @@ describe('POST /api/handouts, over the size limit — criterion 5', () => {
     expect(response.statusCode).toBe(201);
     expect(built.createHandout).toHaveBeenCalledTimes(1);
   });
+
+  it('names the limit and leaves no staging directory when an ignored field, not the file itself, is over it', async () => {
+    const built = buildAppWith();
+    app = built.app;
+    const form = multipartRequest([
+      { kind: 'field', name: 'displayName', value: 'Anhang zu groß' },
+      {
+        kind: 'file',
+        fieldname: 'file',
+        filename: 'ok.html',
+        contentType: 'text/html',
+        content: '<p>ok</p>',
+      },
+      {
+        kind: 'file',
+        fieldname: 'thumbnail',
+        filename: 'thumbnail.bin',
+        contentType: 'application/octet-stream',
+        content: Buffer.alloc(4096, 'a'),
+      },
+    ]);
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/handouts',
+      headers: form.headers,
+      payload: form.payload,
+      cookies: { handout_session: cookie },
+    });
+
+    expect(response.statusCode).toBe(413);
+    const body = response.json() as { message: string };
+    expect(body.message).toContain(String(MAX_UPLOAD_BYTES));
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectCleanStaging();
+  });
 });
 
 describe('POST /api/handouts, unauthenticated — criterion 6 (pinning)', () => {
