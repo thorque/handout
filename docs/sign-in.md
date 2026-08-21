@@ -59,10 +59,26 @@ read — the browser's own `Max-Age` is a convenience, the payload's `exp` is th
 There is no sliding renewal: a valid cookie is never re-issued on a normal request, so a
 session always ends twelve hours after it began, not twelve hours after it was last used.
 
-**"Abmelden" ends the Handout session only.** There is no RP-initiated logout at the
-provider, on purpose — signing out of Handout must not throw anyone out of their company
-account. The one visible consequence: signing straight back in afterwards asks for nothing,
-because the session at the provider still stands.
+**"Abmelden" ends the Handout session only — the provider's SSO session is left standing,
+on purpose.** There is no RP-initiated logout, because signing out of Handout must not
+throw anyone out of their company account (Outlook, the intranet, whatever else shares
+that login). Left at that, though, "Abmelden" would not protect the account it signs out
+of: on a shared machine, the next person to click the sign-in button would ride the
+still-standing SSO session straight back into whoever used it last, without ever seeing a
+login screen — a click, not a credential, would be the entire access control.
+
+So sign-out sets a second, longer-lived marker (`handout_reauth`, same cookie attributes as
+the session cookie, thirty days) that the _next_ sign-in reads and consumes: while it is
+set, the authorization request carries `prompt=login` (standard OIDC, Core 1.0 §3.1.2.1),
+which tells the provider to force re-authentication instead of silently reusing its SSO
+session. Reading the marker clears it, and a successful sign-in clears it again as a
+second guarantee — so only the sign-in right after a sign-out is affected. Whoever never
+signs out never sees the extra screen; the first sign-in of the day stays one click.
+
+The thirty-day lifetime is deliberate, not a placeholder for a shorter default: the
+provider's own SSO session can easily outlive a short marker, and once it does, the gap
+this exists to close reopens. Showing an unnecessary login screen costs a click; failing
+to show one when it matters hands over an account.
 
 The signing key is not a separate configured value. It is derived from
 `HANDOUT_PASSWORD_KEY` with HKDF-SHA256 and the info label `handout session cookie v1`
