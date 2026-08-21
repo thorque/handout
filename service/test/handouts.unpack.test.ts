@@ -140,6 +140,33 @@ describe('unpackZip', () => {
     expect(result).toEqual({ ok: false, kind: 'over-limit', message: expect.any(String) });
   });
 
+  it('does not count junk twins or directory entries towards the entry limit', async () => {
+    // 10 real files (index.html plus 9 more), a __MACOSX/._* twin for each, and 3
+    // directory entries: 23 entries read from the central directory, but only 10 of
+    // them are real files. Before the fix, the pre-flight bailed on the raw count of
+    // everything read (23 > 10) and refused an archive planZipEntries itself accepts —
+    // exactly the case the junk rule exists to prevent. This is red without the fix in
+    // unpack.ts's own pre-flight loop; zip-entries.test.ts's "junk does not count
+    // towards the entry limit" cannot catch it, because planZipEntries was never wrong.
+    const entries: ZipEntrySpec[] = [
+      { name: 'index.html', content: '<h1>ok</h1>' },
+      { name: '__MACOSX/' },
+      { name: '__MACOSX/._index.html', content: 'junk' },
+      { name: 'assets/' },
+    ];
+    for (let i = 0; i < 9; i += 1) {
+      entries.push({ name: `f${i}.txt`, content: 'x' });
+      entries.push({ name: `__MACOSX/._f${i}.txt`, content: 'junk' });
+    }
+    entries.push({ name: 'styles/' });
+    const { zipPath, targetDir } = setUp(entries);
+
+    const result = await unpackZip({ zipPath, targetDir, limits: { ...LIMITS, maxEntries: 10 } });
+
+    expect(result).toEqual({ ok: true, fileCount: 10, bytesWritten: expect.any(Number) });
+    expect(existsSync(path.join(targetDir, '__MACOSX'))).toBe(false);
+  });
+
   it('refuses over the unpacked size before any file exists in the target directory', async () => {
     const { zipPath, targetDir } = setUp([
       { name: 'index.html', content: 'x'.repeat(600) },

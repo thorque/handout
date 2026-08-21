@@ -9,7 +9,13 @@ import path from 'node:path';
 import { PassThrough, type Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { openPromise, type Entry, type ZipFile } from 'yauzl';
-import { planZipEntries, type UnpackLimits, type ZipEntryInfo } from './zip-entries';
+import {
+  isJunkPath,
+  normalizeEntryPath,
+  planZipEntries,
+  type UnpackLimits,
+  type ZipEntryInfo,
+} from './zip-entries';
 
 export interface UnpackRequest {
   zipPath: string;
@@ -91,16 +97,29 @@ export async function unpackZip(request: UnpackRequest): Promise<UnpackResult> {
 
     const infos: ZipEntryInfo[] = [];
     const entries: Entry[] = [];
+    let keptFileEntries = 0;
     try {
       for await (const entry of zipfile.eachEntry()) {
-        infos.push(toEntryInfo(entry));
+        const info = toEntryInfo(entry);
+        infos.push(info);
         entries.push(entry);
-        // Bounds pass 1's own memory. Not zipfile.entryCount: that is unread central
-        // directory metadata and counts junk along with everything else, same as this
-        // loop does — the point here is trusting what was actually read, not the
-        // metadata's claim about it.
-        if (infos.length > limits.maxEntries) {
-          return overLimit(`the zip contains more than ${limits.maxEntries} entries`);
+
+        // Bounds pass 1's own memory before the whole archive is even read — but on the
+        // same count planZipEntries' own over-limit rule uses: kept file entries, after
+        // the junk filter and without directory entries. Not zipfile.entryCount (unread
+        // central-directory metadata) and not every entry seen here: either would let a
+        // macOS-made zip with a __MACOSX/._* twin per real file, or an archive with a
+        // handful of directory entries, refuse a file count that never approaches the
+        // limit — exactly what the junk rule exists to prevent.
+        if (!info.isDirectory) {
+          const normalized = normalizeEntryPath(info.name);
+          const isJunk = normalized.ok && isJunkPath(normalized.segments);
+          if (!isJunk) {
+            keptFileEntries += 1;
+            if (keptFileEntries > limits.maxEntries) {
+              return overLimit(`the zip contains more than ${limits.maxEntries} entries`);
+            }
+          }
         }
       }
     } catch (error) {
@@ -117,14 +136,15 @@ export async function unpackZip(request: UnpackRequest): Promise<UnpackResult> {
       if (entry === undefined) continue; // sourceIndex always indexes entries built above
 
       const targetPath = path.resolve(resolvedTargetDir, planned.targetPath);
-      // Umsetzungshinweis 2, taken literally a second time: this stays true even if
-      // ./zip-entries is ever changed to plan something it should not.
+      // A second, defensive containment check: this stays true even if ./zip-entries is
+      // ever changed to plan a path it should not.
       if (!isContainedIn(targetPath, resolvedTargetDir)) {
         return invalid(
           `the zip contains an entry that escapes the target directory: "${planned.targetPath}"`,
         );
       }
 
+      // No mode is ever taken from the archive: the umask decides, never the entry.
       mkdirSync(path.dirname(targetPath), { recursive: true });
 
       let readStream: Readable;
@@ -143,7 +163,10 @@ export async function unpackZip(request: UnpackRequest): Promise<UnpackResult> {
       try {
         await pipeline(readStream, counter, createWriteStream(targetPath));
       } catch (error) {
-        // No mode is ever taken from the archive: the umask decides, never the entry.
+        // Anything past this point that is not a system error is the archive
+        // misbehaving mid-stream — a bad CRC, a decompression failure, the size
+        // mismatch validateEntrySizes raises for an under-declared entry — and that is
+        // a refusal, not a bug in the service.
         if (isSystemError(error)) throw error; // our own fault, becomes a 500
         return invalid('the zip could not be read', error);
       }

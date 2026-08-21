@@ -121,10 +121,15 @@ interface Candidate {
   compressedSize: number;
 }
 
-/** `__MACOSX/`, `.DS_Store`, `Thumbs.db` — matched case-insensitively — and nothing else. */
-function isJunk(candidate: Candidate): boolean {
-  const firstSegment = candidate.segments[0] ?? '';
-  const lastSegment = candidate.segments[candidate.segments.length - 1] ?? '';
+/**
+ * `__MACOSX/`, `.DS_Store`, `Thumbs.db` — matched case-insensitively — and nothing else.
+ * Exported so `./unpack`'s own pre-flight can bound its entry count on the exact same
+ * decision this module's over-limit rule makes below, rather than a second copy of "is
+ * this junk" that could quietly drift from this one.
+ */
+export function isJunkPath(segments: string[]): boolean {
+  const firstSegment = segments[0] ?? '';
+  const lastSegment = segments[segments.length - 1] ?? '';
   if (firstSegment.toLowerCase() === '__macosx') return true;
   const lowerBasename = lastSegment.toLowerCase();
   return lowerBasename === '.ds_store' || lowerBasename === 'thumbs.db';
@@ -175,7 +180,7 @@ export function planZipEntries(infos: ZipEntryInfo[], limits: UnpackLimits): Zip
   }
 
   // Filter: dropped means never written, never counted, invisible to the structure rule.
-  const kept = candidates.filter((candidate) => !isJunk(candidate));
+  const kept = candidates.filter((candidate) => !isJunkPath(candidate.segments));
 
   const fileEntries = kept.filter((candidate) => !candidate.isDirectory);
 
