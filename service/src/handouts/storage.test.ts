@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { loadConfig } from '../config';
 import { HandoutDirectoryExistsError } from './errors';
 import {
+  createContentDir,
   createStagingDir,
   discardStagingDir,
   ensureHandoutsDir,
@@ -156,5 +157,43 @@ describe('staging and the atomic swap', () => {
     cleanups.push(() => rmSync(root, { recursive: true, force: true }));
 
     expect(() => discardStagingDir(path.join(root, 'never-existed'))).not.toThrow();
+  });
+});
+
+describe('createContentDir', () => {
+  it('creates <stagedDir>/content and returns its path', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'handout-storage-'));
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    const config = configFor(root);
+    ensureStagingDir(config);
+    const staged = createStagingDir(stagingDir(config));
+
+    const contentDir = createContentDir(staged);
+
+    expect(contentDir).toBe(path.join(staged, 'content'));
+    expect(existsSync(contentDir)).toBe(true);
+  });
+
+  it('moving the content directory into place leaves the staging directory behind', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'handout-storage-'));
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    const config = configFor(root);
+    ensureHandoutsDir(config);
+    ensureStagingDir(config);
+    const staged = createStagingDir(stagingDir(config));
+    const contentDir = createContentDir(staged);
+    mkdirSync(path.join(contentDir, 'assets'));
+    writeFileSync(path.join(contentDir, 'index.html'), '<h1>Hallo</h1>');
+    writeFileSync(path.join(contentDir, 'assets', 'app.js'), 'x');
+
+    moveIntoPlace(handoutsDir(config), 'kaffee23', contentDir);
+
+    const written = path.join(handoutsDir(config), 'kaffee23');
+    expect(readFileSync(path.join(written, 'index.html'), 'utf8')).toBe('<h1>Hallo</h1>');
+    expect(readFileSync(path.join(written, 'assets', 'app.js'), 'utf8')).toBe('x');
+    // moveIntoPlace only ever renamed the content/ subdirectory — the staging directory
+    // that contained it is the caller's own to discard, not moveIntoPlace's.
+    expect(existsSync(staged)).toBe(true);
+    expect(existsSync(contentDir)).toBe(false);
   });
 });
