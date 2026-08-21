@@ -10,8 +10,8 @@ import {
   clearFlowCookie,
   clearReauthMarker,
   clearSession,
-  readAndClearReauthMarker,
   readFlowCookie,
+  readReauthMarker,
   readSession,
   writeFlowCookie,
   writeReauthMarker,
@@ -51,11 +51,12 @@ export function authRoutes(app: FastifyInstance, deps: AuthRoutesDeps): void {
 
   app.get('/auth/sign-in', async (request, reply) => {
     const secure = request.protocol === 'https';
-    // A sign-out marks the next sign-in for forced re-authentication (see
-    // service/src/auth/session.ts) — otherwise the provider's own SSO session lets the
-    // next click straight back into the account that just signed out, on a shared machine
-    // straight into whoever used it last. Reading also clears the marker, so it fires once.
-    const forceReauth = readAndClearReauthMarker(request, reply);
+    // A sign-out marks every following sign-in for forced re-authentication (see
+    // service/src/auth/session.ts) until one actually succeeds — otherwise the provider's
+    // own SSO session lets a click straight back into the account that just signed out, on
+    // a shared machine straight into whoever used it last. Read-only here: an abandoned
+    // attempt must leave the marker standing, because nothing was re-authenticated.
+    const forceReauth = readReauthMarker(request);
     const start = await deps.provider.startSignIn(callbackUrl(request), { forceReauth });
     writeFlowCookie(
       reply,
@@ -97,6 +98,9 @@ export function authRoutes(app: FastifyInstance, deps: AuthRoutesDeps): void {
       // line about who was refused, not a record of who tried.
       const domain = claims.email?.split('@')[1] ?? '(no address)';
       request.log.warn({ refusal: decision.refusal, domain }, 'sign-in refused');
+      // The reauth marker, if one is standing, is left alone: a refusal creates no
+      // session, so its reason has not gone away and the next attempt must still force
+      // re-authentication.
       return reply.redirect('/app/?error=not_allowed');
     }
 
@@ -105,8 +109,8 @@ export function authRoutes(app: FastifyInstance, deps: AuthRoutesDeps): void {
       { sub: claims.subject, name: claims.name, email: claims.email ?? '' },
       secure,
     );
-    // Redundant with the marker already having been cleared when this sign-in started —
-    // a second, cheap guarantee that a successful sign-in never leaves it standing.
+    // The only place this is cleared: a session now actually exists, which is the one
+    // condition that ends the reason the marker was set for.
     clearReauthMarker(reply);
     return reply.redirect('/app/');
   });

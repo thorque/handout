@@ -127,29 +127,36 @@ export function requireSession(
 }
 
 /**
- * Set on sign-out, read (and cleared) by the next sign-in start — see `readAndClearReauthMarker`.
- * Same attributes as the session cookie it stands in for the shadow of.
+ * Set on sign-out, read by every sign-in start until a sign-in actually succeeds — see
+ * `readReauthMarker` and `clearReauthMarker`. Same attributes as the session cookie it
+ * stands in for the shadow of.
  */
 export function writeReauthMarker(reply: FastifyReply, secure: boolean): void {
   reply.setCookie(REAUTH_COOKIE, '1', cookieOptions(secure, REAUTH_TTL_SECONDS));
 }
 
 /**
- * Whether the next sign-in must force re-authentication at the provider, and clears the
- * marker in the same call — a marker consumed once is a marker that cannot fire twice.
- * Reading and clearing together (rather than a separate `clearReauthMarker`) is what
- * guarantees the marker is gone even if the flow that follows is abandoned; the successful
- * callback clears it too, but only as a second, redundant safety net.
+ * Whether the next sign-in must force re-authentication at the provider. Read-only, on
+ * purpose: an abandoned attempt — the person who clicked "sign in" and never entered
+ * anything — must leave the marker standing, because no re-authentication happened and its
+ * reason is exactly as live as before. Clearing here instead would let one un-typed
+ * password bring the previous person's SSO session back within one extra click, which is
+ * the whole failure this marker exists to close. Only `clearReauthMarker`, called from the
+ * *successful* callback once a session actually exists, may consume it.
  */
-export function readAndClearReauthMarker(request: FastifyRequest, reply: FastifyReply): boolean {
+export function readReauthMarker(request: FastifyRequest): boolean {
   const raw = request.cookies[REAUTH_COOKIE];
   // unsignCookie, not a bare presence check: clearCookie leaves an empty value behind
   // rather than removing the header, and an empty string is still "present".
-  const present = raw !== undefined && request.unsignCookie(raw).valid;
-  if (present) clearReauthMarker(reply);
-  return present;
+  return raw !== undefined && request.unsignCookie(raw).valid;
 }
 
+/**
+ * Consumes the marker. Call this only where a session is actually being created — the
+ * successful callback — never from the sign-in start and never on a refusal: someone the
+ * allow-rule turns away has not been re-authenticated either, so the marker's reason still
+ * stands and the next attempt must carry `prompt=login` again too.
+ */
 export function clearReauthMarker(reply: FastifyReply): void {
   reply.clearCookie(REAUTH_COOKIE, { path: '/api' });
 }

@@ -228,6 +228,24 @@ describeIfKeycloak('sign-in against the workbench Keycloak', () => {
         keycloakCookies,
       );
       expect(forcedToLogin).toBe(true);
+
+      // The abandoned attempt: nobody filled in that form. /sign-in only reads the
+      // marker, so the same one is still in the browser's cookie jar for a fourth try —
+      // and it must force a login form again too, not silently ride the still-standing
+      // Keycloak SSO session back in because the first forced attempt "used it up".
+      const fourth = await app.inject({
+        method: 'GET',
+        url: '/api/auth/sign-in',
+        headers: { host: TEST_HOST, cookie: `${REAUTH_COOKIE}=${marker?.value ?? ''}` },
+      });
+      expect(fourth.statusCode).toBe(302);
+      const fourthAuthorizationUrl = fourth.headers.location as string;
+
+      const stillForcedToLogin = await authorizationEndpointShowsLoginForm(
+        fourthAuthorizationUrl,
+        keycloakCookies,
+      );
+      expect(stillForcedToLogin).toBe(true);
     },
   );
 

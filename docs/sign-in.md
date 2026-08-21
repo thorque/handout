@@ -68,12 +68,22 @@ still-standing SSO session straight back into whoever used it last, without ever
 login screen — a click, not a credential, would be the entire access control.
 
 So sign-out sets a second, longer-lived marker (`handout_reauth`, same cookie attributes as
-the session cookie, thirty days) that the _next_ sign-in reads and consumes: while it is
-set, the authorization request carries `prompt=login` (standard OIDC, Core 1.0 §3.1.2.1),
-which tells the provider to force re-authentication instead of silently reusing its SSO
-session. Reading the marker clears it, and a successful sign-in clears it again as a
-second guarantee — so only the sign-in right after a sign-out is affected. Whoever never
-signs out never sees the extra screen; the first sign-in of the day stays one click.
+the session cookie, thirty days). **The marker lives until a sign-in actually succeeds, not
+until one is merely attempted.** Every sign-in start reads it — read-only, never cleared
+there — and while it is set, the authorization request carries `prompt=login` (standard
+OIDC, Core 1.0 §3.1.2.1), which tells the provider to force re-authentication instead of
+silently reusing its SSO session. It is cleared in exactly one place: the successful
+callback, together with writing the new session cookie. A refusal by the allow-rule leaves
+it standing too — nobody was re-authenticated into an account, so the marker's reason has
+not gone away.
+
+This is deliberate, not an oversight: an attempt that gets abandoned — a login screen
+opened and never filled in — must not let the marker expire on its own. Clearing it at the
+sign-in _start_ would mean exactly one un-typed password at the provider is enough to
+silently undo the sign-out and ride the still-standing SSO session back in on the very next
+click, which is the failure this marker exists to close. So every attempt after a sign-out
+carries `prompt=login`, however many it takes, until one of them actually succeeds. Whoever
+never signs out never sees the extra screen; the first sign-in of the day stays one click.
 
 The thirty-day lifetime is deliberate, not a placeholder for a shorter default: the
 provider's own SSO session can easily outlive a short marker, and once it does, the gap
