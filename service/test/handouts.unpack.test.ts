@@ -167,6 +167,23 @@ describe('unpackZip', () => {
     expect(existsSync(path.join(targetDir, '__MACOSX'))).toBe(false);
   });
 
+  it('aborts reading a central directory built almost entirely of junk, before the file-count refusal could ever apply', async () => {
+    // maxEntries: 5 gives a raw-read ceiling of 100 (20x). None of these 105 entries is
+    // a real file, so keptFileEntries never moves and the file-count refusal above never
+    // fires — without the raw-read counter of its own, the loop would read all of them,
+    // planZipEntries would see an all-junk list, and the refusal would be 'invalid' ("no
+    // index.html"), not 'over-limit'. This is red without that second counter.
+    const entries: ZipEntrySpec[] = [];
+    for (let i = 0; i < 105; i += 1) {
+      entries.push({ name: `__MACOSX/._f${i}.txt`, content: 'junk' });
+    }
+    const { zipPath, targetDir } = setUp(entries);
+
+    const result = await unpackZip({ zipPath, targetDir, limits: { ...LIMITS, maxEntries: 5 } });
+
+    expect(result).toEqual({ ok: false, kind: 'over-limit', message: expect.any(String) });
+  });
+
   it('refuses over the unpacked size before any file exists in the target directory', async () => {
     const { zipPath, targetDir } = setUp([
       { name: 'index.html', content: 'x'.repeat(600) },

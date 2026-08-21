@@ -81,7 +81,11 @@ a top-level folder gets stripped depends on the entry list as a whole, not on an
     under-declares an entry's size.
   - `HANDOUT_MAX_ZIP_ENTRIES` (default 2000) bounds the number of files — what the other
     two do not catch is a million-entry archive of empty files, tiny packed and unpacked
-    alike, but ruinous to keep as individual files on disk.
+    alike, but ruinous to keep as individual files on disk. Reading the central directory
+    itself is bounded separately, on a generous multiple of this same number: an archive
+    built almost entirely of junk or directory entries never moves the file count this
+    limit is checked against, so without its own, coarser ceiling the read could still be
+    made to grow without bound.
   - `HANDOUT_MAX_COMPRESSION_RATIO` (default 200) bounds amplification: a small upload that
     unpacks to something disproportionately larger. Enforced per entry, and only for an
     entry whose declared uncompressed size exceeds 1 MiB — a small, repetitive file

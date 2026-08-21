@@ -135,6 +135,64 @@ export function isJunkPath(segments: string[]): boolean {
   return lowerBasename === '.ds_store' || lowerBasename === 'thumbs.db';
 }
 
+export type EntryCheck =
+  { ok: true; path: string; segments: string[] } | { ok: false; message: string };
+
+/**
+ * Every per-entry rule (1-9), in this order, applied to one entry — path safety, then
+ * symlink, encryption, decodability and length. The only place these checks are written;
+ * `planZipEntries` below and {@link isCountedFileEntry} both call this rather than
+ * repeating any part of it.
+ */
+export function checkEntry(info: ZipEntryInfo): EntryCheck {
+  const normalized = normalizeEntryPath(info.name);
+  if (!normalized.ok) return { ok: false, message: normalized.message };
+
+  const mode = info.unixMode & MODE_TYPE_MASK;
+  if (mode === SYMLINK_MODE) {
+    return { ok: false, message: `the zip contains a symbolic link: "${truncate(info.name)}"` };
+  }
+  if (info.isEncrypted) {
+    return { ok: false, message: `the zip contains an encrypted entry: "${truncate(info.name)}"` };
+  }
+  if (!info.canDecodeFileData) {
+    return {
+      ok: false,
+      message: `the zip uses an unsupported compression method for "${truncate(info.name)}"`,
+    };
+  }
+  if (normalized.path.length > MAX_PATH_LENGTH) {
+    return {
+      ok: false,
+      message: `the zip contains an entry whose path is too long: "${truncate(info.name)}"`,
+    };
+  }
+  for (const segment of normalized.segments) {
+    if (Buffer.byteLength(segment, 'utf8') > MAX_SEGMENT_BYTES) {
+      return {
+        ok: false,
+        message: `the zip contains an entry whose path is too long: "${truncate(info.name)}"`,
+      };
+    }
+  }
+
+  return { ok: true, path: normalized.path, segments: normalized.segments };
+}
+
+/**
+ * True when `info` would end up one of `planZipEntries`' own `fileEntries` below: it
+ * passes every per-entry safety rule, is not a directory, and is not one of the three
+ * junk names. Exported so `./unpack`'s pre-flight can bound its own read on exactly this
+ * decision — an entry that would refuse the whole archive on sight never reaches the file
+ * count there either, so it must not reach it here.
+ */
+export function isCountedFileEntry(info: ZipEntryInfo): boolean {
+  if (info.isDirectory) return false;
+  const checked = checkEntry(info);
+  if (!checked.ok) return false;
+  return !isJunkPath(checked.segments);
+}
+
 export function planZipEntries(infos: ZipEntryInfo[], limits: UnpackLimits): ZipPlan {
   // Every rule below runs on every entry, junk included: an entry named
   // "__MACOSX/../../etc/passwd" must refuse the archive, not be quietly dropped by a filter
@@ -144,35 +202,14 @@ export function planZipEntries(infos: ZipEntryInfo[], limits: UnpackLimits): Zip
     const info = infos[index];
     if (info === undefined) continue;
 
-    const normalized = normalizeEntryPath(info.name);
-    if (!normalized.ok) return invalid(normalized.message);
-
-    const mode = info.unixMode & MODE_TYPE_MASK;
-    if (mode === SYMLINK_MODE) {
-      return invalid(`the zip contains a symbolic link: "${truncate(info.name)}"`);
-    }
-    if (info.isEncrypted) {
-      return invalid(`the zip contains an encrypted entry: "${truncate(info.name)}"`);
-    }
-    if (!info.canDecodeFileData) {
-      return invalid(`the zip uses an unsupported compression method for "${truncate(info.name)}"`);
-    }
-    if (normalized.path.length > MAX_PATH_LENGTH) {
-      return invalid(`the zip contains an entry whose path is too long: "${truncate(info.name)}"`);
-    }
-    for (const segment of normalized.segments) {
-      if (Buffer.byteLength(segment, 'utf8') > MAX_SEGMENT_BYTES) {
-        return invalid(
-          `the zip contains an entry whose path is too long: "${truncate(info.name)}"`,
-        );
-      }
-    }
+    const checked = checkEntry(info);
+    if (!checked.ok) return invalid(checked.message);
 
     candidates.push({
       sourceIndex: index,
       name: info.name,
-      path: normalized.path,
-      segments: normalized.segments,
+      path: checked.path,
+      segments: checked.segments,
       isDirectory: info.isDirectory,
       uncompressedSize: info.uncompressedSize,
       compressedSize: info.compressedSize,

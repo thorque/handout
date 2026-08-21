@@ -10,8 +10,7 @@ import { PassThrough, type Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { openPromise, type Entry, type ZipFile } from 'yauzl';
 import {
-  isJunkPath,
-  normalizeEntryPath,
+  isCountedFileEntry,
   planZipEntries,
   type UnpackLimits,
   type ZipEntryInfo,
@@ -26,6 +25,16 @@ export interface UnpackRequest {
 export type UnpackResult =
   | { ok: true; fileCount: number; bytesWritten: number }
   | { ok: false; kind: 'invalid' | 'over-limit'; message: string; cause?: unknown };
+
+/**
+ * A legitimate archive carries roughly two raw central-directory entries per real file (a
+ * `__MACOSX/._*` twin) plus a handful of directory entries. This multiplies the
+ * configured file-count limit generously beyond that, so reading the central directory
+ * still aborts on its own — before an archive built almost entirely of junk or directory
+ * entries can grow the read (and its heap) without bound, even though such entries never
+ * move the kept-file-entry count the refusal below is checked against.
+ */
+const RAW_ENTRY_ABORT_MULTIPLIER = 20;
 
 function invalid(message: string, cause?: unknown): UnpackResult {
   return cause === undefined
@@ -97,29 +106,34 @@ export async function unpackZip(request: UnpackRequest): Promise<UnpackResult> {
 
     const infos: ZipEntryInfo[] = [];
     const entries: Entry[] = [];
+    // Two counters, because they answer two different questions and cannot stand in for
+    // each other: keptFileEntries is what the refusal below is checked against — the same
+    // "would this end up a file entry" decision planZipEntries makes, via
+    // isCountedFileEntry, so a macOS-made zip with a __MACOSX/._* twin per real file, or a
+    // handful of directory entries, is never refused for a file count nowhere near the
+    // limit. The raw count is what bounds *reading* itself: an archive built almost
+    // entirely of junk or directory entries never moves keptFileEntries at all, so without
+    // its own ceiling the central-directory scan (and its heap) would grow unbounded.
     let keptFileEntries = 0;
+    const rawEntryLimit = limits.maxEntries * RAW_ENTRY_ABORT_MULTIPLIER;
     try {
       for await (const entry of zipfile.eachEntry()) {
         const info = toEntryInfo(entry);
         infos.push(info);
         entries.push(entry);
 
-        // Bounds pass 1's own memory before the whole archive is even read — but on the
-        // same count planZipEntries' own over-limit rule uses: kept file entries, after
-        // the junk filter and without directory entries. Not zipfile.entryCount (unread
-        // central-directory metadata) and not every entry seen here: either would let a
-        // macOS-made zip with a __MACOSX/._* twin per real file, or an archive with a
-        // handful of directory entries, refuse a file count that never approaches the
-        // limit — exactly what the junk rule exists to prevent.
-        if (!info.isDirectory) {
-          const normalized = normalizeEntryPath(info.name);
-          const isJunk = normalized.ok && isJunkPath(normalized.segments);
-          if (!isJunk) {
-            keptFileEntries += 1;
-            if (keptFileEntries > limits.maxEntries) {
-              return overLimit(`the zip contains more than ${limits.maxEntries} entries`);
-            }
+        if (isCountedFileEntry(info)) {
+          keptFileEntries += 1;
+          if (keptFileEntries > limits.maxEntries) {
+            return overLimit(`the zip contains more than ${limits.maxEntries} entries`);
           }
+        }
+
+        if (infos.length > rawEntryLimit) {
+          return overLimit(
+            `the zip's central directory lists far more entries than its file-count ` +
+              `limit of ${limits.maxEntries} allows`,
+          );
         }
       }
     } catch (error) {
