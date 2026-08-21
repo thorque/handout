@@ -176,8 +176,10 @@ export async function handoutApiRoutes(app: FastifyInstance, deps: HandoutApiDep
         createdAt: handout.createdAt,
       });
     } catch (error) {
-      // Only reachable once `createHandout` has already run — the row must not outlive
-      // its directory, so it is deleted again; its slug reservation stays, by design.
+      // Reachable from every step above, not only a failed moveIntoPlace: the
+      // rethrown multipart error, a staging or pipeline failure, createHandout itself.
+      // The delete below only ever fires once a row actually exists — a handout must not
+      // outlive its directory — and its slug reservation stays, by design.
       if (handout !== undefined) {
         await deps.handouts.deleteHandout(handout.id);
       }
