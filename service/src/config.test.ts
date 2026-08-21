@@ -190,9 +190,7 @@ describe('loadConfig', () => {
   });
 
   it('takes the upload limit from the environment', () => {
-    expect(loadConfig({ ...REQUIRED, HANDOUT_MAX_UPLOAD_BYTES: '1024' }).maxUploadBytes).toBe(
-      1024,
-    );
+    expect(loadConfig({ ...REQUIRED, HANDOUT_MAX_UPLOAD_BYTES: '1024' }).maxUploadBytes).toBe(1024);
   });
 
   it('rejects an upload limit of zero', () => {

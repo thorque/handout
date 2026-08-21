@@ -20,9 +20,7 @@ export function isHtmlFilename(filename: string): boolean {
   return lower.endsWith('.html') || lower.endsWith('.htm');
 }
 
-export type DisplayNameResult =
-  | { ok: true; displayName: string }
-  | { ok: false; reason: string };
+export type DisplayNameResult = { ok: true; displayName: string } | { ok: false; reason: string };
 
 /**
  * `filename` without its extension, or the whole string if it carries none. A filename
