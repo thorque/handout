@@ -11,15 +11,26 @@ import fastifyMultipart from '@fastify/multipart';
 import type { FastifyInstance } from 'fastify';
 import { requireSession } from '../auth/session';
 import type { Handout, HandoutRepository } from '../handouts/repository';
-import { createStagingDir, discardStagingDir, moveIntoPlace } from '../handouts/storage';
-import { displayNameFrom, INDEX_FILE, isHtmlFilename } from '../handouts/upload';
+import {
+  createContentDir,
+  createStagingDir,
+  discardStagingDir,
+  moveIntoPlace,
+} from '../handouts/storage';
+import { displayNameFrom, INDEX_FILE, isHtmlFilename, isZipFilename } from '../handouts/upload';
+import { unpackZip } from '../handouts/unpack';
+import type { UnpackLimits } from '../handouts/zip-entries';
 import { handoutUrl } from '../handouts/address';
+
+/** The staged zip's own name, sitting beside `content/` in the staging directory. */
+const STAGED_ZIP_NAME = 'upload.zip';
 
 export interface HandoutApiDeps {
   handouts: HandoutRepository;
   handoutsDir: string;
   stagingDir: string;
   maxUploadBytes: number;
+  unpackLimits: UnpackLimits;
 }
 
 interface Refusal {
@@ -73,6 +84,8 @@ export async function handoutApiRoutes(app: FastifyInstance, deps: HandoutApiDep
     let explicitDisplayName: string | undefined;
     let filename: string | undefined;
     let stagedDir: string | undefined;
+    let contentDir: string | undefined;
+    let isZip = false;
     let sawFilePart = false;
     let refusal: Refusal | undefined;
     let handout: Handout | undefined;
@@ -117,14 +130,22 @@ export async function handoutApiRoutes(app: FastifyInstance, deps: HandoutApiDep
           sawFilePart = true;
           filename = part.filename;
 
-          if (!isHtmlFilename(part.filename)) {
+          if (!isHtmlFilename(part.filename) && !isZipFilename(part.filename)) {
             part.file.resume();
-            refusal ??= badRequest('file must be an .html or .htm file');
+            refusal ??= badRequest('file must be an .html, .htm or .zip file');
             continue;
           }
+          isZip = isZipFilename(part.filename);
 
+          // Both branches stage into the same content/ subdirectory — the html branch
+          // writes it directly, the zip branch unpacks into it after the loop, once the
+          // whole staged zip is on disk. moveIntoPlace only ever renames contentDir.
           stagedDir = createStagingDir(deps.stagingDir);
-          await pipeline(part.file, createWriteStream(path.join(stagedDir, INDEX_FILE)));
+          contentDir = createContentDir(stagedDir);
+          const target = isZip
+            ? path.join(stagedDir, STAGED_ZIP_NAME)
+            : path.join(contentDir, INDEX_FILE);
+          await pipeline(part.file, createWriteStream(target));
 
           if (part.file.truncated) {
             refusal ??= tooLarge(deps.maxUploadBytes);
@@ -148,7 +169,7 @@ export async function handoutApiRoutes(app: FastifyInstance, deps: HandoutApiDep
         return;
       }
 
-      if (stagedDir === undefined || filename === undefined) {
+      if (stagedDir === undefined || contentDir === undefined || filename === undefined) {
         reply.code(400).send(badRequest('no file was uploaded'));
         return;
       }
@@ -159,14 +180,37 @@ export async function handoutApiRoutes(app: FastifyInstance, deps: HandoutApiDep
         return;
       }
 
+      if (isZip) {
+        // Cheap and pure checks (the extension, the display name) run first — failing
+        // fast on those saves inflating an archive that was going to be refused anyway.
+        const unpacked = await unpackZip({
+          zipPath: path.join(stagedDir, STAGED_ZIP_NAME),
+          targetDir: contentDir,
+          limits: deps.unpackLimits,
+        });
+        if (!unpacked.ok) {
+          request.log.warn({ reason: unpacked.message }, 'zip upload refused while unpacking');
+          const zipRefusal =
+            unpacked.kind === 'over-limit'
+              ? { statusCode: 413, error: 'Payload Too Large', message: unpacked.message }
+              : badRequest(unpacked.message);
+          reply.code(zipRefusal.statusCode).send(zipRefusal);
+          return;
+        }
+      }
+
       handout = await deps.handouts.createHandout({
         displayName: nameResult.displayName,
         ownerSubject: claims.sub,
         ownerEmail: claims.email,
       });
 
-      moveIntoPlace(deps.handoutsDir, handout.slug, stagedDir);
-      stagedDir = undefined; // now lives under handoutsDir, not staging — nothing left to discard
+      moveIntoPlace(deps.handoutsDir, handout.slug, contentDir);
+      // stagedDir stays set on purpose: after the move it may still hold upload.zip (the
+      // zip branch) or nothing at all (the html branch) — either way the staging
+      // directory itself is always discarded in `finally` now, which is simpler and
+      // safer than a variable that had to be cleared at exactly the right moment in the
+      // most safety-critical handler in the product.
 
       const url = handoutUrl({ protocol: request.protocol, host: request.host }, handout.slug);
       reply.code(201).header('Location', url).send({

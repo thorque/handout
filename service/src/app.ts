@@ -73,6 +73,11 @@ export function buildApp(config: Config, deps: AppDeps): FastifyInstance {
     handoutsDir,
     stagingDir: stagingDir(config),
     maxUploadBytes: config.maxUploadBytes,
+    unpackLimits: {
+      maxUnpackedBytes: config.maxUnpackedBytes,
+      maxEntries: config.maxZipEntries,
+      maxCompressionRatio: config.maxCompressionRatio,
+    },
   });
 
   // serve: false adds no route of its own; it only decorates the reply with sendFile,
