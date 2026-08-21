@@ -114,17 +114,44 @@ function throughKeycloak(
 }
 
 /**
- * Plays the browser's part of the authorization-code flow with `fetch`, the way Caddy
- * plays it for a real one: fetches the authorization URL, extracts the login form's
- * `action`, posts the credentials, and returns the `Location` of the redirect back to
- * `/api/auth/callback` — the query string an `app.inject` call can then hand to the
- * service under test. No browser, no admin API, no direct grant.
+ * Whether the authorization endpoint answers with a login form (200, a page carrying a
+ * form `action`) rather than silently completing the flow on the provider's still-standing
+ * SSO session (which would answer with a redirect back to `/api/auth/callback` instead).
+ * This is the assertion `prompt=login` exists to make true again right after a sign-out.
  */
-export async function signInThroughKeycloak(
+export async function authorizationEndpointShowsLoginForm(
+  authorizationUrl: string,
+  keycloakCookies: string[] = [],
+): Promise<boolean> {
+  const issuer = new URL(
+    CONFIGURED_ISSUER ??
+      (() => {
+        throw new Error(NO_KEYCLOAK);
+      })(),
+  );
+  const request = throughKeycloak(authorizationUrl, issuer);
+  const headers: Record<string, string> = { ...request.headers };
+  if (keycloakCookies.length > 0) headers.Cookie = cookieHeaderFrom(keycloakCookies);
+  const response = await fetch(request.url, { headers, redirect: 'manual' });
+  if (response.status !== 200) return false;
+  const html = await response.text();
+  return /action="[^"]+"/.test(html);
+}
+
+/**
+ * The shared mechanics behind `signInThroughKeycloak` and `signInKeepingKeycloakCookies`:
+ * fetches the authorization URL, extracts the login form's `action`, posts the
+ * credentials, and returns both the `Location` of the redirect back to
+ * `/api/auth/callback` and the cookies Keycloak's own session stands on — the ones a real
+ * browser would keep across a second visit to the authorization endpoint, and exactly
+ * what `authorizationEndpointShowsLoginForm` needs to prove Keycloak's SSO session either
+ * does or does not shortcut a second sign-in. No browser, no admin API, no direct grant.
+ */
+async function performSignIn(
   authorizationUrl: string,
   username: string,
   password: string,
-): Promise<string> {
+): Promise<{ location: string; keycloakCookies: string[] }> {
   const issuer = new URL(
     CONFIGURED_ISSUER ??
       (() => {
@@ -160,5 +187,32 @@ export async function signInThroughKeycloak(
   if (location === null) {
     throw new Error(`Keycloak did not redirect after sign-in (status ${response.status})`);
   }
+  return { location, keycloakCookies: [...loginCookies, ...response.headers.getSetCookie()] };
+}
+
+/**
+ * Plays the browser's part of the authorization-code flow with `fetch`, the way Caddy
+ * plays it for a real one, and returns just the redirect back to `/api/auth/callback` —
+ * the query string an `app.inject` call can then hand to the service under test.
+ */
+export async function signInThroughKeycloak(
+  authorizationUrl: string,
+  username: string,
+  password: string,
+): Promise<string> {
+  const { location } = await performSignIn(authorizationUrl, username, password);
   return location;
+}
+
+/**
+ * Same sign-in, but also hands back the cookies Keycloak's own SSO session stands on —
+ * for a test that then visits the authorization endpoint a second time carrying them, the
+ * same way a real browser would.
+ */
+export async function signInKeepingKeycloakCookies(
+  authorizationUrl: string,
+  username: string,
+  password: string,
+): Promise<{ location: string; keycloakCookies: string[] }> {
+  return performSignIn(authorizationUrl, username, password);
 }

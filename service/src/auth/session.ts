@@ -7,11 +7,21 @@ import type { FastifyReply, FastifyRequest } from 'fastify';
 
 export const SESSION_COOKIE = 'handout_session';
 export const FLOW_COOKIE = 'handout_oidc_flow';
+export const REAUTH_COOKIE = 'handout_reauth';
 
 /** Twelve hours, enforced on every read — the browser's `maxAge` is a convenience only. */
 const SESSION_TTL_SECONDS = 12 * 60 * 60;
 /** Ten minutes: long enough for a login form, short enough that an abandoned flow expires. */
 const FLOW_TTL_SECONDS = 10 * 60;
+/**
+ * Thirty days, deliberately generous rather than a short default. This marker is what
+ * forces the *next* sign-in to re-authenticate at the provider after "Abmelden" — and the
+ * failure mode of too short a lifetime is exactly the one this exists to close: the
+ * provider's own SSO session can easily outlive a short marker, and once it does, the
+ * next person on a shared machine is one click into the previous person's account again.
+ * An unnecessary extra login screen costs a click; a missing one costs an account.
+ */
+const REAUTH_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 export interface SessionClaims {
   sub: string;
@@ -114,6 +124,34 @@ export function requireSession(
     return undefined;
   }
   return session;
+}
+
+/**
+ * Set on sign-out, read (and cleared) by the next sign-in start — see `readAndClearReauthMarker`.
+ * Same attributes as the session cookie it stands in for the shadow of.
+ */
+export function writeReauthMarker(reply: FastifyReply, secure: boolean): void {
+  reply.setCookie(REAUTH_COOKIE, '1', cookieOptions(secure, REAUTH_TTL_SECONDS));
+}
+
+/**
+ * Whether the next sign-in must force re-authentication at the provider, and clears the
+ * marker in the same call — a marker consumed once is a marker that cannot fire twice.
+ * Reading and clearing together (rather than a separate `clearReauthMarker`) is what
+ * guarantees the marker is gone even if the flow that follows is abandoned; the successful
+ * callback clears it too, but only as a second, redundant safety net.
+ */
+export function readAndClearReauthMarker(request: FastifyRequest, reply: FastifyReply): boolean {
+  const raw = request.cookies[REAUTH_COOKIE];
+  // unsignCookie, not a bare presence check: clearCookie leaves an empty value behind
+  // rather than removing the header, and an empty string is still "present".
+  const present = raw !== undefined && request.unsignCookie(raw).valid;
+  if (present) clearReauthMarker(reply);
+  return present;
+}
+
+export function clearReauthMarker(reply: FastifyReply): void {
+  reply.clearCookie(REAUTH_COOKIE, { path: '/api' });
 }
 
 export function writeFlowCookie(

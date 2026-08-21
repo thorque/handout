@@ -91,7 +91,10 @@ export function createProvider(config: Config) {
   }
 
   return {
-    async startSignIn(redirectUri: string): Promise<SignInStart> {
+    async startSignIn(
+      redirectUri: string,
+      options: { forceReauth?: boolean } = {},
+    ): Promise<SignInStart> {
       const providerConfig = await discover();
       const codeVerifier = client.randomPKCECodeVerifier();
       const codeChallenge = await client.calculatePKCECodeChallenge(codeVerifier);
@@ -105,6 +108,10 @@ export function createProvider(config: Config) {
         code_challenge_method: 'S256',
         state,
         nonce,
+        // Standard OIDC (Core 1.0 §3.1.2.1), not a provider-specific path: forces the
+        // provider to re-authenticate rather than silently reuse its own SSO session.
+        // Only set after a sign-out — see the reauth marker in service/src/auth/session.ts.
+        ...(options.forceReauth === true ? { prompt: 'login' } : {}),
       });
 
       return { url, state, nonce, codeVerifier };

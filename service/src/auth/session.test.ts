@@ -3,13 +3,17 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   clearFlowCookie,
+  clearReauthMarker,
   clearSession,
   FLOW_COOKIE,
+  readAndClearReauthMarker,
   readFlowCookie,
   readSession,
+  REAUTH_COOKIE,
   requireSession,
   SESSION_COOKIE,
   writeFlowCookie,
+  writeReauthMarker,
   writeSession,
 } from './session';
 
@@ -190,5 +194,108 @@ describe('flow cookie', () => {
     const setCookie = response.headers['set-cookie'];
     const header = Array.isArray(setCookie) ? setCookie[0] : setCookie;
     expect(header).toContain(`${FLOW_COOKIE}=;`);
+  });
+});
+
+describe('reauth marker', () => {
+  it('is absent when nobody has signed out', async () => {
+    app = buildTestApp();
+    app.get('/check', async (request, reply) => ({
+      forceReauth: readAndClearReauthMarker(request, reply),
+    }));
+    await app.ready();
+
+    const response = await app.inject({ method: 'GET', url: '/check' });
+    expect(response.json<{ forceReauth: boolean }>().forceReauth).toBe(false);
+  });
+
+  it('round-trips: set by sign-out, read as present on the next request', async () => {
+    app = buildTestApp();
+    app.get('/write', async (_request, reply) => {
+      writeReauthMarker(reply, false);
+      return { ok: true };
+    });
+    app.get('/check', async (request, reply) => ({
+      forceReauth: readAndClearReauthMarker(request, reply),
+    }));
+    await app.ready();
+
+    const written = await app.inject({ method: 'GET', url: '/write' });
+    const cookie = written.cookies.find((entry) => entry.name === REAUTH_COOKIE);
+    expect(cookie).toBeDefined();
+
+    const checked = await app.inject({
+      method: 'GET',
+      url: '/check',
+      cookies: { [REAUTH_COOKIE]: cookie?.value ?? '' },
+    });
+    expect(checked.json<{ forceReauth: boolean }>().forceReauth).toBe(true);
+  });
+
+  it('reading clears it, so a second read on a fresh request sees it as absent again', async () => {
+    // The cookie a browser would actually carry after readAndClearReauthMarker cleared it
+    // is the *response's* Set-Cookie (an expired one), not the request's original value —
+    // this is what proves the marker cannot fire twice, rather than just calling the
+    // function twice against the same never-cleared cookie value.
+    app = buildTestApp();
+    app.get('/write', async (_request, reply) => {
+      writeReauthMarker(reply, false);
+      return { ok: true };
+    });
+    app.get('/check', async (request, reply) => ({
+      forceReauth: readAndClearReauthMarker(request, reply),
+    }));
+    await app.ready();
+
+    const written = await app.inject({ method: 'GET', url: '/write' });
+    const setCookie = written.cookies.find((entry) => entry.name === REAUTH_COOKIE);
+
+    const firstCheck = await app.inject({
+      method: 'GET',
+      url: '/check',
+      cookies: { [REAUTH_COOKIE]: setCookie?.value ?? '' },
+    });
+    expect(firstCheck.json<{ forceReauth: boolean }>().forceReauth).toBe(true);
+    const clearedCookie = firstCheck.cookies.find((entry) => entry.name === REAUTH_COOKIE);
+    expect(clearedCookie?.value).toBe('');
+
+    const secondCheck = await app.inject({
+      method: 'GET',
+      url: '/check',
+      cookies: { [REAUTH_COOKIE]: clearedCookie?.value ?? '' },
+    });
+    expect(secondCheck.json<{ forceReauth: boolean }>().forceReauth).toBe(false);
+  });
+
+  it('sets the same attributes as the session cookie, with a thirty-day lifetime', async () => {
+    app = buildTestApp();
+    app.get('/write', async (_request, reply) => {
+      writeReauthMarker(reply, false);
+      return { ok: true };
+    });
+    await app.ready();
+
+    const response = await app.inject({ method: 'GET', url: '/write' });
+    const setCookie = response.headers['set-cookie'];
+    const header = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+    expect(header).toContain('Path=/api');
+    expect(header).toContain('HttpOnly');
+    expect(header).toContain('SameSite=Lax');
+    expect(header).not.toContain('Secure');
+    expect(header).toMatch(/Max-Age=2592000/); // 30 * 24 * 60 * 60
+  });
+
+  it('clearReauthMarker removes the cookie', async () => {
+    app = buildTestApp();
+    app.get('/clear', async (_request, reply) => {
+      clearReauthMarker(reply);
+      return { ok: true };
+    });
+    await app.ready();
+
+    const response = await app.inject({ method: 'GET', url: '/clear' });
+    const setCookie = response.headers['set-cookie'];
+    const header = Array.isArray(setCookie) ? setCookie[0] : setCookie;
+    expect(header).toContain(`${REAUTH_COOKIE}=;`);
   });
 });

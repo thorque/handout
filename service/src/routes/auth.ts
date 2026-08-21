@@ -8,10 +8,13 @@ import { decideAccess, type AllowList } from '../auth/access';
 import type { Provider } from '../auth/provider';
 import {
   clearFlowCookie,
+  clearReauthMarker,
   clearSession,
+  readAndClearReauthMarker,
   readFlowCookie,
   readSession,
   writeFlowCookie,
+  writeReauthMarker,
   writeSession,
 } from '../auth/session';
 
@@ -48,7 +51,12 @@ export function authRoutes(app: FastifyInstance, deps: AuthRoutesDeps): void {
 
   app.get('/auth/sign-in', async (request, reply) => {
     const secure = request.protocol === 'https';
-    const start = await deps.provider.startSignIn(callbackUrl(request));
+    // A sign-out marks the next sign-in for forced re-authentication (see
+    // service/src/auth/session.ts) — otherwise the provider's own SSO session lets the
+    // next click straight back into the account that just signed out, on a shared machine
+    // straight into whoever used it last. Reading also clears the marker, so it fires once.
+    const forceReauth = readAndClearReauthMarker(request, reply);
+    const start = await deps.provider.startSignIn(callbackUrl(request), { forceReauth });
     writeFlowCookie(
       reply,
       { state: start.state, nonce: start.nonce, codeVerifier: start.codeVerifier },
@@ -97,12 +105,21 @@ export function authRoutes(app: FastifyInstance, deps: AuthRoutesDeps): void {
       { sub: claims.subject, name: claims.name, email: claims.email ?? '' },
       secure,
     );
+    // Redundant with the marker already having been cleared when this sign-in started —
+    // a second, cheap guarantee that a successful sign-in never leaves it standing.
+    clearReauthMarker(reply);
     return reply.redirect('/app/');
   });
 
-  app.post('/auth/sign-out', async (_request, reply) => {
+  app.post('/auth/sign-out', async (request, reply) => {
+    const secure = request.protocol === 'https';
     clearSession(reply);
     clearFlowCookie(reply);
+    // Ends the Handout session only — the provider's SSO session stands, on purpose (see
+    // docs/sign-in.md). This marker is what still makes "Abmelden" protect the account on
+    // a shared machine: the next sign-in is forced to authenticate again rather than
+    // riding that still-standing SSO session straight back in.
+    writeReauthMarker(reply, secure);
     return reply.code(204).send();
   });
 }

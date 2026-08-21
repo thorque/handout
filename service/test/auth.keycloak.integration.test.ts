@@ -8,9 +8,11 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import type { Config } from '../src/config';
-import { SESSION_COOKIE, FLOW_COOKIE } from '../src/auth/session';
+import { SESSION_COOKIE, FLOW_COOKIE, REAUTH_COOKIE } from '../src/auth/session';
 import {
+  authorizationEndpointShowsLoginForm,
   hasKeycloak,
+  signInKeepingKeycloakCookies,
   signInThroughKeycloak,
   testAuthConfig,
   TEST_DEV_PASSWORD,
@@ -182,6 +184,52 @@ describeIfKeycloak('sign-in against the workbench Keycloak', () => {
     expect(response.headers.location).toBe('/app/?error=sign_in_failed');
     expect(response.cookies.map((c) => c.name)).not.toContain(SESSION_COOKIE);
   });
+
+  it(
+    'forces a fresh login at the provider after a sign-out, instead of riding its SSO ' +
+      'session straight back in',
+    async () => {
+      // First sign-in, keeping the cookies Keycloak's own SSO session stands on — the
+      // ones a real browser would carry into a second visit to the authorization endpoint.
+      const first = await startSignIn();
+      const { keycloakCookies } = await signInKeepingKeycloakCookies(
+        first.authorizationUrl,
+        'jana',
+        TEST_DEV_PASSWORD,
+      );
+
+      // Control: without a sign-out in between, Keycloak's SSO session shortcuts a second
+      // sign-in — the authorization endpoint redirects straight through, no login form.
+      // This is what proves the test below is actually catching prompt=login, and not
+      // some other reason the login form never appears.
+      const second = await startSignIn();
+      const stillSignedIn = await authorizationEndpointShowsLoginForm(
+        second.authorizationUrl,
+        keycloakCookies,
+      );
+      expect(stillSignedIn).toBe(false);
+
+      // Now sign out of Handout, then start a third sign-in — the same still-standing
+      // Keycloak SSO session (same cookies) is presented again.
+      const signOut = await app.inject({ method: 'POST', url: '/api/auth/sign-out' });
+      const marker = signOut.cookies.find((entry) => entry.name === REAUTH_COOKIE);
+      expect(marker).toBeDefined();
+
+      const third = await app.inject({
+        method: 'GET',
+        url: '/api/auth/sign-in',
+        headers: { host: TEST_HOST, cookie: `${REAUTH_COOKIE}=${marker?.value ?? ''}` },
+      });
+      expect(third.statusCode).toBe(302);
+      const thirdAuthorizationUrl = third.headers.location as string;
+
+      const forcedToLogin = await authorizationEndpointShowsLoginForm(
+        thirdAuthorizationUrl,
+        keycloakCookies,
+      );
+      expect(forcedToLogin).toBe(true);
+    },
+  );
 
   it('discovers the issuer through the shim as the configured issuer, not the internal one', async () => {
     // Measured: without the forwarded headers this would read http://keycloak:8080/realms/handout.
