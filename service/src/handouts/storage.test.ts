@@ -105,8 +105,8 @@ describe('staging and the atomic swap', () => {
     const config = configFor(root);
     ensureStagingDir(config);
 
-    const first = createStagingDir(config);
-    const second = createStagingDir(config);
+    const first = createStagingDir(stagingDir(config));
+    const second = createStagingDir(stagingDir(config));
 
     expect(first).not.toBe(second);
     expect(existsSync(first)).toBe(true);
@@ -120,7 +120,7 @@ describe('staging and the atomic swap', () => {
     ensureHandoutsDir(config);
     ensureStagingDir(config);
 
-    const staged = createStagingDir(config);
+    const staged = createStagingDir(stagingDir(config));
     writeFileSync(path.join(staged, 'index.html'), '<h1>Hallo</h1>');
 
     moveIntoPlace(handoutsDir(config), 'kaffee23', staged);
@@ -137,11 +137,11 @@ describe('staging and the atomic swap', () => {
     ensureHandoutsDir(config);
     ensureStagingDir(config);
 
-    const first = createStagingDir(config);
+    const first = createStagingDir(stagingDir(config));
     writeFileSync(path.join(first, 'index.html'), 'first');
     moveIntoPlace(handoutsDir(config), 'kaffee23', first);
 
-    const second = createStagingDir(config);
+    const second = createStagingDir(stagingDir(config));
     writeFileSync(path.join(second, 'index.html'), 'second');
 
     expect(() => moveIntoPlace(handoutsDir(config), 'kaffee23', second)).toThrow(

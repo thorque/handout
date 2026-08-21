@@ -48,12 +48,13 @@ export function ensureStagingDir(config: Config): string {
 }
 
 /**
- * A fresh, empty directory to stage one upload into, created inside the staging
- * directory — not `os.tmpdir()` — so that {@link moveIntoPlace}'s `rename` stays within
- * one filesystem and is therefore atomic.
+ * A fresh, empty directory to stage one upload into, created inside `stagingDirPath` —
+ * not `os.tmpdir()` — so that {@link moveIntoPlace}'s `rename` stays within one filesystem
+ * and is therefore atomic. Takes the resolved staging directory, not a `Config`, so the
+ * route module that calls this at request time needs no configuration of its own.
  */
-export function createStagingDir(config: Config): string {
-  return mkdtempSync(path.join(stagingDir(config), 'upload-'));
+export function createStagingDir(stagingDirPath: string): string {
+  return mkdtempSync(path.join(stagingDirPath, 'upload-'));
 }
 
 /**
