@@ -4,6 +4,7 @@ import { buildApp } from './app';
 import { loadConfig } from './config';
 import { runMigrations } from './db/migrate';
 import { createPool } from './db/pool';
+import { createHandoutRepository } from './handouts/repository';
 
 // The .env path is resolved from this module, not from the cwd: the process is started
 // from the repository root while `npm run -w service` moves the cwd into `service/`.
@@ -43,9 +44,11 @@ async function checkDatabase(): Promise<boolean> {
 
 // The service cannot serve without the handouts directory (buildApp creates it): a
 // permission failure there ends the process the same way a failing migration does above.
+const handouts = createHandoutRepository({ pool, passwordKey: config.passwordKey });
+
 let app: ReturnType<typeof buildApp>;
 try {
-  app = buildApp(config, { checkDatabase });
+  app = buildApp(config, { checkDatabase, handouts });
 } catch (error) {
   console.error('could not prepare the data directory, refusing to start:', error);
   process.exit(1);

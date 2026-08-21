@@ -5,6 +5,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import { loadConfig } from '../src/config';
+import { stubHandoutRepository } from './support/handouts';
 
 let dataDir: string;
 let app: FastifyInstance;
@@ -36,7 +37,10 @@ beforeAll(async () => {
     HANDOUT_ALLOWED_EMAILS: 'berger-partner.de',
     HANDOUT_DATA_DIR: dataDir,
   });
-  app = buildApp(config, { checkDatabase: () => Promise.resolve(true) });
+  app = buildApp(config, {
+    checkDatabase: () => Promise.resolve(true),
+    handouts: stubHandoutRepository(),
+  });
 });
 
 afterAll(async () => {

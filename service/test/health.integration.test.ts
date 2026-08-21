@@ -6,6 +6,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import { loadConfig } from '../src/config';
+import { stubHandoutRepository } from './support/handouts';
 
 const require = createRequire(import.meta.url);
 const { version } = require('../package.json') as { version: string };
@@ -33,7 +34,10 @@ describe('GET /api/health', () => {
   let app: FastifyInstance;
 
   function start(databaseOk: boolean): FastifyInstance {
-    app = buildApp(config, { checkDatabase: () => Promise.resolve(databaseOk) });
+    app = buildApp(config, {
+      checkDatabase: () => Promise.resolve(databaseOk),
+      handouts: stubHandoutRepository(),
+    });
     return app;
   }
 
