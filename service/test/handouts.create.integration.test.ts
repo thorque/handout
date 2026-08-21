@@ -69,7 +69,7 @@ describe.skipIf(!hasDatabase)('POST /api/handouts, against a real database', () 
     });
   }
 
-  it('creates a publication and answers with the full address — criterion 1', async () => {
+  it('publishes a handout and answers with the full address — criterion 1', async () => {
     const response = await publish(
       'Prototyp Berger & Partner',
       'prototyp.html',
@@ -148,7 +148,7 @@ describe.skipIf(!hasDatabase)('POST /api/handouts, against a real database', () 
     expect(slugs.size).toBe(12);
   });
 
-  it('keeps two publications with the same name apart — criterion 4', async () => {
+  it('keeps two handouts with the same name apart — criterion 4', async () => {
     const first = await publish('Gleicher Name', 'a.html', '<p>erste</p>');
     const second = await publish('Gleicher Name', 'b.html', '<p>zweite</p>');
     const { slug: slugA } = first.json() as { slug: string };

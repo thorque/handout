@@ -11,12 +11,36 @@ under `<HANDOUT_DATA_DIR>/handouts/<slug>/` — one directory per handout.
     <slug>/
       index.html
       ...
+  staging/
 ```
 
 `handouts/` sits between the data directory and a handout on purpose. Delivery
 (`resolveHandoutFile`) looks only under this directory, so nothing else that later
-lands directly under `<HANDOUT_DATA_DIR>` — a staging area for unpacking, for instance —
-can ever become a reachable address by accident.
+lands directly under `<HANDOUT_DATA_DIR>` — `staging/`, below, is exactly that — can
+ever become a reachable address by accident.
+
+## The write path: stage, row, rename
+
+A publish writes in this order, and the order is deliberate:
+
+1. The uploaded bytes are streamed into a fresh directory under `staging/`, as
+   `index.html`. Rejecting an upload here — the wrong extension, the file too large — costs
+   nothing but a discarded staging directory.
+2. Only once the bytes are on disk does a row get inserted, which is also where the slug is
+   drawn and reserved.
+3. The staging directory is renamed into place at `handouts/<slug>/`. `staging/` sits on
+   the same filesystem as `handouts/`, so this is an atomic `rename`, not a copy — there is
+   no window in which a half-written directory is reachable at its final address.
+
+Staging first, not the row first, is the choice: a row without content for every rejected
+upload would be the alternative, and there is nothing to point that row at until the bytes
+have already proven themselves acceptable. The one window this leaves is the rename itself
+failing after the row exists — the row is deleted again in that case, and its slug
+reservation is never reissued, the same way a deleted handout's slug never is.
+
+This endpoint is create-only: a target directory that already exists under `handouts/` is
+refused, never overwritten. Replacing a handout under its existing address is its own
+concern, not a side effect of the address happening to collide.
 
 The directory name **may be the slug**, because the slug is immutable for the
 handout's whole lifetime: the `BEFORE UPDATE` trigger and `updateHandout` both
