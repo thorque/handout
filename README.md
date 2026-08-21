@@ -45,6 +45,10 @@ Everything is read from the environment; `.env` is loaded for local development.
 | `HANDOUT_ALLOWED_EMAILS`       | **required** — who may publish, domains and addresses; see [`docs/sign-in.md`](docs/sign-in.md)          |
 | `HANDOUT_SIGN_IN_LABEL`        | the sign-in button's caption, default `Mit Firmenkonto anmelden`                                         |
 | `HANDOUT_OIDC_INTERNAL_ORIGIN` | where the service reaches the provider, when that differs from the browser; falls back to `KEYCLOAK_URL` |
+| `HANDOUT_MAX_UPLOAD_BYTES`     | the largest file `POST /api/handouts` accepts, in bytes, default `26214400` (25 MB)                      |
+
+25 MB is generous enough for a Claude artifact with embedded images, and the same limit
+will serve the zip upload of a later story.
 
 `HANDOUT_PASSWORD_KEY` has no default and no fallback: handout passwords have to stay
 readable for their owner, so they are encrypted rather than hashed, and losing the key

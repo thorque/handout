@@ -1,9 +1,28 @@
-import { existsSync, mkdtempSync, rmSync, chmodSync, mkdirSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  chmodSync,
+  mkdirSync,
+  writeFileSync,
+} from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { loadConfig } from '../config';
-import { ensureHandoutsDir, handoutsDir, HANDOUTS_SUBDIR } from './storage';
+import { HandoutDirectoryExistsError } from './errors';
+import {
+  createStagingDir,
+  discardStagingDir,
+  ensureHandoutsDir,
+  ensureStagingDir,
+  handoutsDir,
+  HANDOUTS_SUBDIR,
+  moveIntoPlace,
+  stagingDir,
+  STAGING_SUBDIR,
+} from './storage';
 
 function configFor(dataDir: string) {
   return loadConfig({
@@ -64,5 +83,78 @@ describe('ensureHandoutsDir', () => {
     expect(() => ensureHandoutsDir(config)).toThrowError(
       expect.objectContaining({ code: 'EACCES' }),
     );
+  });
+});
+
+describe('staging and the atomic swap', () => {
+  it('lands the staging directory under dataDir, not under handouts/', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'handout-storage-'));
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    const config = configFor(root);
+    ensureStagingDir(config);
+
+    expect(stagingDir(config)).toBe(path.join(root, STAGING_SUBDIR));
+    expect(existsSync(stagingDir(config))).toBe(true);
+    expect(stagingDir(config)).not.toBe(handoutsDir(config));
+    expect(stagingDir(config).startsWith(handoutsDir(config))).toBe(false);
+  });
+
+  it('gives two different paths for two createStagingDir calls', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'handout-storage-'));
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    const config = configFor(root);
+    ensureStagingDir(config);
+
+    const first = createStagingDir(stagingDir(config));
+    const second = createStagingDir(stagingDir(config));
+
+    expect(first).not.toBe(second);
+    expect(existsSync(first)).toBe(true);
+    expect(existsSync(second)).toBe(true);
+  });
+
+  it('moveIntoPlace makes the file readable at <dataDir>/handouts/<slug>/index.html and removes staging', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'handout-storage-'));
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    const config = configFor(root);
+    ensureHandoutsDir(config);
+    ensureStagingDir(config);
+
+    const staged = createStagingDir(stagingDir(config));
+    writeFileSync(path.join(staged, 'index.html'), '<h1>Hallo</h1>');
+
+    moveIntoPlace(handoutsDir(config), 'kaffee23', staged);
+
+    const written = path.join(handoutsDir(config), 'kaffee23', 'index.html');
+    expect(readFileSync(written, 'utf8')).toBe('<h1>Hallo</h1>');
+    expect(existsSync(staged)).toBe(false);
+  });
+
+  it('refuses to overwrite an existing target and leaves it byte-identical', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'handout-storage-'));
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+    const config = configFor(root);
+    ensureHandoutsDir(config);
+    ensureStagingDir(config);
+
+    const first = createStagingDir(stagingDir(config));
+    writeFileSync(path.join(first, 'index.html'), 'first');
+    moveIntoPlace(handoutsDir(config), 'kaffee23', first);
+
+    const second = createStagingDir(stagingDir(config));
+    writeFileSync(path.join(second, 'index.html'), 'second');
+
+    expect(() => moveIntoPlace(handoutsDir(config), 'kaffee23', second)).toThrow(
+      HandoutDirectoryExistsError,
+    );
+    const written = path.join(handoutsDir(config), 'kaffee23', 'index.html');
+    expect(readFileSync(written, 'utf8')).toBe('first');
+  });
+
+  it('discardStagingDir on a path that does not exist is a no-op', () => {
+    const root = mkdtempSync(path.join(os.tmpdir(), 'handout-storage-'));
+    cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+
+    expect(() => discardStagingDir(path.join(root, 'never-existed'))).not.toThrow();
   });
 });

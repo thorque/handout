@@ -4,16 +4,19 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import { createProvider, internalOriginNotice } from './auth/provider';
 import { requireSession } from './auth/session';
 import type { Config } from './config';
+import type { HandoutRepository } from './handouts/repository';
 import { API_PREFIX, isReservedPath } from './namespace';
 import { authRoutes } from './routes/auth';
+import { handoutApiRoutes } from './routes/handouts-api';
 import { handoutRoutes } from './routes/handouts';
 import { healthRoutes } from './routes/health';
 import { sendNotFoundPage } from './routes/not-found';
-import { ensureHandoutsDir } from './handouts/storage';
+import { ensureHandoutsDir, ensureStagingDir, stagingDir } from './handouts/storage';
 
 export interface AppDeps {
   /** Whether the database answers *and* carries the schema. */
   checkDatabase: () => Promise<boolean>;
+  handouts: HandoutRepository;
 }
 
 /** Paths under `/api/**` the session gate leaves open: the health probe and the sign-in flow. */
@@ -59,9 +62,18 @@ export function buildApp(config: Config, deps: AppDeps): FastifyInstance {
     requireSession(request, reply);
   });
 
-  // The service cannot serve without this directory, so it is created before the
-  // delivery route is registered rather than lazily on the first request.
+  // The service cannot serve without these directories, so they are created before the
+  // routes that depend on them are registered rather than lazily on the first request.
   const handoutsDir = ensureHandoutsDir(config);
+  ensureStagingDir(config);
+
+  app.register(handoutApiRoutes, {
+    prefix: API_PREFIX,
+    handouts: deps.handouts,
+    handoutsDir,
+    stagingDir: stagingDir(config),
+    maxUploadBytes: config.maxUploadBytes,
+  });
 
   // serve: false adds no route of its own; it only decorates the reply with sendFile,
   // which handoutRoutes calls once it has resolved and contained the path itself.

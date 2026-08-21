@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addressFromPath } from './address';
+import { addressFromPath, handoutUrl } from './address';
 
 describe('addressFromPath', () => {
   it('resolves a bare slug', () => {
@@ -39,5 +39,25 @@ describe('addressFromPath', () => {
     for (const pathname of ['/', '/nope', '/under_score', '/ABCDEFGH', '/abcdefghi']) {
       expect(addressFromPath(pathname), `expected undefined for "${pathname}"`).toBeUndefined();
     }
+  });
+});
+
+describe('handoutUrl', () => {
+  it('builds the address from the protocol and host it is given', () => {
+    expect(handoutUrl({ protocol: 'https', host: 'id.example.com' }, 'abcdefgh')).toBe(
+      'https://id.example.com/abcdefgh/',
+    );
+  });
+
+  it('carries a port that is part of the host', () => {
+    expect(handoutUrl({ protocol: 'http', host: 'localhost:3000' }, 'abcdefgh')).toBe(
+      'http://localhost:3000/abcdefgh/',
+    );
+  });
+
+  it('always ends with a trailing slash', () => {
+    expect(
+      handoutUrl({ protocol: 'https', host: 'id.example.com' }, 'abcdefgh').endsWith('/'),
+    ).toBe(true);
   });
 });

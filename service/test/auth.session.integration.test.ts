@@ -11,9 +11,8 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import { loadConfig } from '../src/config';
-import fastifyCookie from '@fastify/cookie';
-import Fastify from 'fastify';
-import { writeSession } from '../src/auth/session';
+import { stubHandoutRepository } from './support/handouts';
+import { validSessionCookie } from './support/session';
 
 const dataDir = mkdtempSync(path.join(os.tmpdir(), 'handout-auth-session-'));
 
@@ -38,42 +37,31 @@ afterEach(async () => {
   await app.close();
 });
 
-/** A valid, signed session cookie value for `readSession`/`requireSession` to accept. */
-async function validSessionCookie(): Promise<string> {
-  const helper = Fastify();
-  await helper.register(fastifyCookie, { secret: config.sessionKey });
-  helper.get('/write', async (_request, reply) => {
-    writeSession(
-      reply,
-      { sub: 's1', name: 'Jana Berger', email: 'j.berger@berger-partner.de' },
-      false,
-    );
-    return { ok: true };
-  });
-  await helper.ready();
-  const response = await helper.inject({ method: 'GET', url: '/write' });
-  const cookie = response.cookies.find((entry) => entry.name === 'handout_session');
-  await helper.close();
-  if (cookie === undefined) throw new Error('no session cookie was set');
-  return cookie.value;
-}
-
 describe('the session gate', () => {
   it('leaves /api/health public', async () => {
-    app = buildApp(config, { checkDatabase: () => Promise.resolve(true) });
+    app = buildApp(config, {
+      checkDatabase: () => Promise.resolve(true),
+      handouts: stubHandoutRepository(),
+    });
     const response = await app.inject({ method: 'GET', url: '/api/health' });
     expect(response.statusCode).not.toBe(401);
   });
 
   it('leaves /api/auth/session public', async () => {
-    app = buildApp(config, { checkDatabase: () => Promise.resolve(true) });
+    app = buildApp(config, {
+      checkDatabase: () => Promise.resolve(true),
+      handouts: stubHandoutRepository(),
+    });
     const response = await app.inject({ method: 'GET', url: '/api/auth/session' });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ signedIn: false, signInLabel: config.signInLabel });
   });
 
   it('answers 401 JSON for an unrouted /api path, without a session', async () => {
-    app = buildApp(config, { checkDatabase: () => Promise.resolve(true) });
+    app = buildApp(config, {
+      checkDatabase: () => Promise.resolve(true),
+      handouts: stubHandoutRepository(),
+    });
     const response = await app.inject({ method: 'GET', url: '/api/handouts' });
     expect(response.statusCode).toBe(401);
     expect(response.headers['content-type']).toMatch(/^application\/json/);
@@ -85,8 +73,11 @@ describe('the session gate', () => {
   });
 
   it('lets a valid session through the gate, so an unrouted /api path still answers 404, not 401', async () => {
-    app = buildApp(config, { checkDatabase: () => Promise.resolve(true) });
-    const cookie = await validSessionCookie();
+    app = buildApp(config, {
+      checkDatabase: () => Promise.resolve(true),
+      handouts: stubHandoutRepository(),
+    });
+    const cookie = await validSessionCookie(config);
     const response = await app.inject({
       method: 'GET',
       url: '/api/handouts',
@@ -98,7 +89,10 @@ describe('the session gate', () => {
   });
 
   it('does not leak into handout space', async () => {
-    app = buildApp(config, { checkDatabase: () => Promise.resolve(true) });
+    app = buildApp(config, {
+      checkDatabase: () => Promise.resolve(true),
+      handouts: stubHandoutRepository(),
+    });
 
     const root = await app.inject({ method: 'GET', url: '/' });
     expect(root.statusCode).toBe(404);

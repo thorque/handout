@@ -814,6 +814,26 @@ try {
     assert(health.status === 200, `expected /api/health to stay 200, got ${health.status}`);
   });
 
+  await check('api-create-unauthenticated', async () => {
+    // Unlike api-requires-session, this sends the request POST /api/handouts actually
+    // serves — the check that would catch the route being registered outside the session
+    // gate, which api-requires-session's GET against an unrouted path could not.
+    const body = new FormData();
+    body.append('displayName', 'Smoke Test');
+    body.append(
+      'file',
+      new Blob(['<!doctype html><p>smoke</p>'], { type: 'text/html' }),
+      'smoke.html',
+    );
+    const response = await fetch(`${SERVICE_ORIGIN}/api/handouts`, { method: 'POST', body });
+
+    assert(response.status === 401, `expected 401, got ${response.status}`);
+    assert(
+      contentType(response).includes('application/json'),
+      `expected JSON, got "${contentType(response)}"`,
+    );
+  });
+
   await check('proxy-realms', async () => {
     const response = await proxyFetch(
       `${PROXY_ORIGIN}/realms/handout/.well-known/openid-configuration`,

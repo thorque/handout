@@ -9,6 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import type { Config } from '../src/config';
 import { SESSION_COOKIE, FLOW_COOKIE, REAUTH_COOKIE } from '../src/auth/session';
+import { stubHandoutRepository } from './support/handouts';
 import {
   authorizationEndpointShowsLoginForm,
   hasKeycloak,
@@ -27,7 +28,10 @@ describeIfKeycloak('sign-in against the workbench Keycloak', () => {
 
   beforeAll(() => {
     config = testAuthConfig();
-    app = buildApp(config, { checkDatabase: () => Promise.resolve(true) });
+    app = buildApp(config, {
+      checkDatabase: () => Promise.resolve(true),
+      handouts: stubHandoutRepository(),
+    });
   });
 
   afterAll(async () => {

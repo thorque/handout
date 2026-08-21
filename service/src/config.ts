@@ -21,12 +21,19 @@ export interface Config {
   signInLabel: string;
   oidcInternalOrigin: string | undefined;
   sessionKey: Buffer;
+  maxUploadBytes: number;
 }
 
 const DEFAULT_DATA_DIR = path.resolve(import.meta.dirname, '../../var/data');
 
 /** AES-256 takes a 32-byte key; anything else would only fail at the first encryption. */
 const PASSWORD_KEY_BYTES = 32;
+
+/**
+ * 25 MB. A Claude artifact with embedded images is rarely larger, and the same limit will
+ * serve the zip upload of a later story.
+ */
+const DEFAULT_MAX_UPLOAD_BYTES = 26_214_400;
 
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/;
 
@@ -74,6 +81,15 @@ function readDatabaseUrl(raw: string | undefined, fallback: string | undefined):
     throw new Error('DATABASE_URL must be set (or POSTGRES_URL, which it falls back to)');
   }
   return url;
+}
+
+function readMaxUploadBytes(raw: string | undefined): number {
+  if (raw === undefined || raw === '') return DEFAULT_MAX_UPLOAD_BYTES;
+  const bytes = Number(raw);
+  if (!Number.isInteger(bytes) || bytes <= 0) {
+    throw new Error(`HANDOUT_MAX_UPLOAD_BYTES must be an integer greater than zero, got "${raw}"`);
+  }
+  return bytes;
 }
 
 function readDatabaseSchema(raw: string | undefined): string {
@@ -225,6 +241,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     env.HANDOUT_OIDC_INTERNAL_ORIGIN,
     env.KEYCLOAK_URL,
   );
+  const maxUploadBytes = readMaxUploadBytes(env.HANDOUT_MAX_UPLOAD_BYTES);
 
   return {
     port,
@@ -241,5 +258,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     signInLabel,
     oidcInternalOrigin,
     sessionKey: deriveSessionKey(passwordKey),
+    maxUploadBytes,
   };
 }

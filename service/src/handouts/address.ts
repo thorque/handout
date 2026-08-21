@@ -35,3 +35,15 @@ export function addressFromPath(pathname: string): HandoutAddress | undefined {
 
   return { slug, rest };
 }
+
+/**
+ * The reverse direction: the full address a slug is reachable under. Takes the protocol
+ * and host as arguments and reads no configuration — the caller passes `request.protocol`
+ * and `request.host`, which follow `X-Forwarded-Proto`/`X-Forwarded-Host` behind Caddy
+ * because `buildApp` sets `trustProxy: true`, the same way the session cookie's `secure`
+ * flag and the derived `redirect_uri` already do. That is what keeps the address correct
+ * on `handout-caddy.localhost` and over `monoceros share` alike.
+ */
+export function handoutUrl(origin: { protocol: string; host: string }, slug: string): string {
+  return `${origin.protocol}://${origin.host}/${slug}/`;
+}

@@ -27,6 +27,7 @@ describe('loadConfig', () => {
     expect(config.databaseSchema).toBe('public');
     expect(config.signInLabel).toBe('Mit Firmenkonto anmelden');
     expect(config.oidcInternalOrigin).toBeUndefined();
+    expect(config.maxUploadBytes).toBe(26_214_400);
   });
 
   it('rejects a port outside the valid range', () => {
@@ -92,6 +93,7 @@ describe('loadConfig', () => {
       HANDOUT_ALLOWED_EMAILS: 'berger-partner.de',
       HANDOUT_SIGN_IN_LABEL: 'Mit Testkonto anmelden',
       HANDOUT_OIDC_INTERNAL_ORIGIN: 'http://keycloak:8080',
+      HANDOUT_MAX_UPLOAD_BYTES: '1024',
     });
 
     expect(config).toEqual({
@@ -109,6 +111,7 @@ describe('loadConfig', () => {
       signInLabel: 'Mit Testkonto anmelden',
       oidcInternalOrigin: 'http://keycloak:8080',
       sessionKey: config.sessionKey,
+      maxUploadBytes: 1024,
     });
   });
 
@@ -182,6 +185,38 @@ describe('loadConfig', () => {
     );
   });
 
+  it('defaults the upload limit to 25 MB', () => {
+    expect(loadConfig(REQUIRED).maxUploadBytes).toBe(26_214_400);
+  });
+
+  it('takes the upload limit from the environment', () => {
+    expect(loadConfig({ ...REQUIRED, HANDOUT_MAX_UPLOAD_BYTES: '1024' }).maxUploadBytes).toBe(1024);
+  });
+
+  it('rejects an upload limit of zero', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_UPLOAD_BYTES: '0' })).toThrow(
+      /HANDOUT_MAX_UPLOAD_BYTES/,
+    );
+  });
+
+  it('rejects a negative upload limit', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_UPLOAD_BYTES: '-1' })).toThrow(
+      /HANDOUT_MAX_UPLOAD_BYTES/,
+    );
+  });
+
+  it('rejects a non-integer upload limit', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_UPLOAD_BYTES: '1.5' })).toThrow(
+      /HANDOUT_MAX_UPLOAD_BYTES/,
+    );
+  });
+
+  it('rejects an upload limit carrying a unit', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_UPLOAD_BYTES: '25MB' })).toThrow(
+      /HANDOUT_MAX_UPLOAD_BYTES/,
+    );
+  });
+
   it('derives a 32-byte session key that differs from the password key', () => {
     const config = loadConfig(REQUIRED);
     expect(config.sessionKey.length).toBe(32);
@@ -208,6 +243,7 @@ describe('loadConfig', () => {
         'signInLabel',
         'oidcInternalOrigin',
         'sessionKey',
+        'maxUploadBytes',
       ].sort(),
     );
   });
