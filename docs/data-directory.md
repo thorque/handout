@@ -23,20 +23,101 @@ ever become a reachable address by accident.
 
 A publish writes in this order, and the order is deliberate:
 
-1. The uploaded bytes are streamed into a fresh directory under `staging/`, as
-   `index.html`. Rejecting an upload here — the wrong extension, the file too large — costs
+1. A fresh directory is created under `staging/` (`staging/upload-xxxxxx/`), and inside it
+   a `content/` subdirectory — the one thing that eventually gets renamed into place. A
+   single HTML file is streamed straight into `content/index.html`. A zip is streamed into
+   `staging/upload-xxxxxx/upload.zip`, first — see _Unpacking a zip_ below for what happens
+   to it next. Rejecting an upload here — the wrong extension, the file too large — costs
    nothing but a discarded staging directory.
-2. Only once the bytes are on disk does a row get inserted, which is also where the slug is
-   drawn and reserved.
-3. The staging directory is renamed into place at `handouts/<slug>/`. `staging/` sits on
-   the same filesystem as `handouts/`, so this is an atomic `rename`, not a copy — there is
-   no window in which a half-written directory is reachable at its final address.
+2. Only once the content is on disk (and, for a zip, only once it has been unpacked
+   successfully) does a row get inserted, which is also where the slug is drawn and
+   reserved.
+3. `content/` is renamed into place at `handouts/<slug>/` — not the staging directory that
+   contains it. `staging/` sits on the same filesystem as `handouts/`, so this is an atomic
+   `rename`, not a copy — there is no window in which a half-written directory is reachable
+   at its final address.
 
 Staging first, not the row first, is the choice: a row without content for every rejected
 upload would be the alternative, and there is nothing to point that row at until the bytes
 have already proven themselves acceptable. The one window this leaves is the rename itself
 failing after the row exists — the row is deleted again in that case, and its slug
 reservation is never reissued, the same way a deleted handout's slug never is.
+
+## Unpacking a zip
+
+A zip is staged as a whole file first — `yauzl` reads the central directory at the end of
+the file and needs random access, so it cannot be unpacked from the upload stream directly.
+Once it is on disk, unpacking runs in two passes, and nothing is written in the first:
+
+1. **Read the whole entry list.** Every entry's name, declared size and mode are read from
+   the central directory. Nothing is written yet.
+2. **Decide.** Every entry is checked, in this order, against every rule below. The first
+   entry that fails any rule refuses the whole archive — nothing about a zip is ever
+   partially accepted.
+3. **Write.** Only once the whole archive has been judged safe does anything land in
+   `content/`.
+
+Deciding before writing is what makes it possible to refuse an archive _before_ the limits
+below are crossed, and it is what makes the structure rule (below) possible at all: whether
+a top-level folder gets stripped depends on the entry list as a whole, not on any one entry.
+
+**What is refused, and why:**
+
+- **A path that could escape the target directory.** An absolute path (a leading `/`, or a
+  Windows drive letter), a `..` segment however deep, an empty segment, a path over 512
+  characters, or a segment over 255 bytes.
+- **A symbolic link.** A published artifact has no legitimate need for one, and refusing
+  anything that merely looks like one (by its stored mode) is the safe direction.
+- **An encrypted entry**, or one using a compression method this service cannot decode —
+  there is nothing to unpack it into.
+- **Two entries that would land at the same path**, or a path used as both a file and a
+  directory by two different entries. Which one would win is otherwise a matter of write
+  order, not something a security-critical unpacker leaves to chance.
+- **Three configurable limits**, each catching something the others do not:
+  - `HANDOUT_MAX_UNPACKED_BYTES` (default 100 MB) bounds the total size once unpacked —
+    the only one of the three that catches an archive that is large both packed and
+    unpacked. Checked twice: once against the entries' declared sizes before a byte is
+    written, and once against the bytes actually written, in case a central directory ever
+    under-declares an entry's size.
+  - `HANDOUT_MAX_ZIP_ENTRIES` (default 2000) bounds the number of files — what the other
+    two do not catch is a million-entry archive of empty files, tiny packed and unpacked
+    alike, but ruinous to keep as individual files on disk.
+  - `HANDOUT_MAX_COMPRESSION_RATIO` (default 200) bounds amplification: a small upload that
+    unpacks to something disproportionately larger. Enforced per entry, and only for an
+    entry whose declared uncompressed size exceeds 1 MiB — a small, repetitive file
+    legitimately reaches a high ratio, and it is harmless whatever the ratio.
+
+**What decides the shape of what gets published** — this is a search for the entry file,
+never a count of what sits at the top level of the archive:
+
+1. If the archive's root holds a file named exactly `index.html`, the tree is published
+   exactly as it is — whatever else sits in the root (one folder, twenty folders, other
+   files) is irrelevant.
+2. Otherwise, if the root holds exactly one entry, that entry is a folder, and that folder
+   holds an `index.html` directly inside it, that one folder is stripped — its content
+   becomes the root of the handout. Only one level: an `index.html` a level deeper than
+   that is not found this way.
+3. Otherwise the archive is refused, with a message naming both places that were searched.
+
+Only `index.html` is searched for, never `index.htm` — "Resolution and its rules" below
+appends exactly `index.html` when it resolves a directory, so an archive whose entry file
+is `index.htm` would unpack fine and then answer not-found at its own address. Renaming it
+while unpacking would be touching the delivered artifact, which this product does not do,
+so such an archive is refused instead, naming the reason.
+
+**What is skipped, rather than refused or published:** exactly three names —
+`__MACOSX/`, `.DS_Store` and `Thumbs.db` (matched case-insensitively) — the debris a
+zip-creating tool leaves beside the content a publisher actually meant to share. Nothing
+else is filtered by name. In particular, a path starting with a dot (`.gitignore`,
+`.well-known/x.json`) is written like any other entry: "Resolution and its rules" below
+already makes such a path unfetchable, so leaving it on disk is harmless, while dropping an
+entry nobody asked to have dropped would be a change to the delivered artifact. The safety
+checks above run before this filter, not after — an entry that both looks like junk and
+escapes the target directory still refuses the archive, rather than being quietly dropped.
+
+Nothing here ever repairs an archive: no rewriting, no re-zipping, no mode taken from the
+entries, no renaming an `index.htm` to fit. An archive Handout cannot serve safely is
+refused whole.
 
 This endpoint is create-only: a target directory that already exists under `handouts/` is
 refused, never overwritten. Replacing a handout under its existing address is its own
