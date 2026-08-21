@@ -42,10 +42,10 @@ async function checkDatabase(): Promise<boolean> {
   }
 }
 
-// The service cannot serve without the handouts directory (buildApp creates it): a
-// permission failure there ends the process the same way a failing migration does above.
 const handouts = createHandoutRepository({ pool, passwordKey: config.passwordKey });
 
+// The service cannot serve without the handouts directory (buildApp creates it): a
+// permission failure there ends the process the same way a failing migration does above.
 let app: ReturnType<typeof buildApp>;
 try {
   app = buildApp(config, { checkDatabase, handouts });
