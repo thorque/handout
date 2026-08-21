@@ -231,9 +231,9 @@ describe('loadConfig', () => {
   });
 
   it('takes the unpacked-size limit from the environment', () => {
-    expect(
-      loadConfig({ ...REQUIRED, HANDOUT_MAX_UNPACKED_BYTES: '2048' }).maxUnpackedBytes,
-    ).toBe(2048);
+    expect(loadConfig({ ...REQUIRED, HANDOUT_MAX_UNPACKED_BYTES: '2048' }).maxUnpackedBytes).toBe(
+      2048,
+    );
   });
 
   it('rejects an unpacked-size limit of zero', () => {
