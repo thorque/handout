@@ -21,6 +21,15 @@ export const HANDOUTS_SUBDIR = 'handouts';
  */
 export const STAGING_SUBDIR = 'staging';
 
+/**
+ * The directory inside a staging directory that actually becomes the handout: the HTML
+ * branch writes `content/index.html`, the zip branch unpacks into `content/`, and
+ * `moveIntoPlace` renames this one subdirectory — not the staging directory itself — into
+ * `handouts/<slug>/`. Everything else in the staging directory (a staged `upload.zip`, say)
+ * is discarded along with it.
+ */
+export const CONTENT_SUBDIR = 'content';
+
 export function handoutsDir(config: Config): string {
   return path.join(config.dataDir, HANDOUTS_SUBDIR);
 }
@@ -58,6 +67,16 @@ export function createStagingDir(stagingDirPath: string): string {
 }
 
 /**
+ * Creates `<stagedDir>/content` and returns its path — where the route writes the upload's
+ * actual content, whichever branch it came in on. See {@link CONTENT_SUBDIR}.
+ */
+export function createContentDir(stagedDir: string): string {
+  const dir = path.join(stagedDir, CONTENT_SUBDIR);
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+/**
  * Removes a staging directory and everything in it. Never throws — this runs on the
  * failure path, where the caller is already handling one error and cannot let a cleanup
  * failure replace it.
@@ -71,6 +90,13 @@ export function discardStagingDir(dir: string): void {
  * target with {@link HandoutDirectoryExistsError} rather than overwriting it — this
  * endpoint is create-only, and replacing a handout under its existing address is its own
  * story.
+ *
+ * `stagedDir` is expected to be a {@link createContentDir} directory, not the staging
+ * directory that contains it — the "no half-unpacked state" guarantee already holds
+ * without any change here: what is renamed into place is a directory that only exists
+ * once the unpack (or the single-file write) has already succeeded, and everything else
+ * — a staged `upload.zip`, an aborted `content/` — stays inside the staging directory the
+ * route discards in its `finally`.
  */
 export function moveIntoPlace(handoutsDirPath: string, slug: string, stagedDir: string): void {
   const target = path.join(handoutsDirPath, slug);

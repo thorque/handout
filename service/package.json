@@ -12,6 +12,7 @@
   },
   "devDependencies": {
     "@types/pg": "^8.21.0",
+    "@types/yauzl": "^3.4.0",
     "vite": "^8.2.1",
     "vitest": "^4.1.10"
   },
@@ -24,6 +25,7 @@
     "node-pg-migrate": "^9.0.0",
     "openid-client": "^6.8.7",
     "pg": "^8.23.0",
-    "tsx": "^4.23.12"
+    "tsx": "^4.23.12",
+    "yauzl": "^3.4.0"
   }
 }

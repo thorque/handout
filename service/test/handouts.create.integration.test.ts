@@ -1,7 +1,8 @@
 /**
- * The create endpoint against a real database — criteria 1, 2, 3 and 4 from the story, plus
- * the display-name fallback. See `handouts.create.validation.integration.test.ts` for
- * everything that needs no database at all.
+ * The create endpoint against a real database: the happy paths for a single HTML file and
+ * for a zip alike, plus the display-name fallback both share. See
+ * `handouts.create.validation.integration.test.ts` for everything that needs no database
+ * at all.
  */
 import { mkdtempSync, rmSync } from 'node:fs';
 import os from 'node:os';
@@ -15,6 +16,7 @@ import { SLUG_ALPHABET, SLUG_PATTERN } from '../src/slug';
 import { createMigratedTestSchema, hasDatabase, type TestDatabase } from './support/database';
 import { multipartFormData } from './support/multipart';
 import { validSessionCookie } from './support/session';
+import { buildZip } from './support/zip';
 
 describe.skipIf(!hasDatabase)('POST /api/handouts, against a real database', () => {
   let database: TestDatabase;
@@ -67,6 +69,28 @@ describe.skipIf(!hasDatabase)('POST /api/handouts, against a real database', () 
       payload: form.payload,
       cookies: { handout_session: cookie },
     });
+  }
+
+  function publishZip(displayName: string | undefined, filename: string, content: Buffer) {
+    const form = multipartFormData(displayName === undefined ? {} : { displayName }, {
+      fieldname: 'file',
+      filename,
+      contentType: 'application/zip',
+      content,
+    });
+    return app.inject({
+      method: 'POST',
+      url: '/api/handouts',
+      headers: form.headers,
+      payload: form.payload,
+      cookies: { handout_session: cookie },
+    });
+  }
+
+  /** Every `href`/`src` value a delivered HTML page carries — the same references a browser would fetch. */
+  function referencesIn(html: string): string[] {
+    const matches = html.matchAll(/(?:href|src)="([^"]+)"/g);
+    return [...matches].map((match) => match[1] ?? '');
   }
 
   it('publishes a handout and answers with the full address — criterion 1', async () => {
@@ -169,5 +193,95 @@ describe.skipIf(!hasDatabase)('POST /api/handouts, against a real database', () 
 
     expect(response.statusCode).toBe(201);
     expect((response.json() as { displayName: string }).displayName).toBe('quartalsbericht');
+  });
+
+  it(
+    'publishes a zip with index.html in the root and several folders beside it, every ' +
+      'reference loading correctly',
+    async () => {
+      const html =
+        '<!doctype html><html><head><link rel="stylesheet" href="styles/style.css">' +
+        '</head><body><h1>Hallo</h1><script src="assets/app.js"></script></body></html>';
+      const css = 'body { color: teal; }';
+      const js = 'document.body.append(" script ran")';
+      const zip = buildZip([
+        { name: 'index.html', content: html },
+        { name: 'styles/' },
+        { name: 'styles/style.css', content: css },
+        { name: 'assets/' },
+        { name: 'assets/app.js', content: js },
+      ]);
+
+      const created = await publishZip('Prototyp mit Zip', 'prototyp.zip', zip);
+
+      expect(created.statusCode).toBe(201);
+      const { slug } = created.json() as { slug: string };
+
+      const index = await app.inject({ method: 'GET', url: `/${slug}/` });
+      expect(index.statusCode).toBe(200);
+      expect(index.headers['content-type']).toMatch(/^text\/html/);
+      expect(index.body).toBe(html);
+
+      // Only fetching what the page actually references — not just "/" answering 200 —
+      // can fail against an implementation that writes index.html and drops the rest.
+      const references = referencesIn(index.body);
+      expect(references.sort()).toEqual(['assets/app.js', 'styles/style.css']);
+      for (const reference of references) {
+        const asset = await app.inject({ method: 'GET', url: `/${slug}/${reference}` });
+        expect(asset.statusCode).toBe(200);
+        expect(asset.headers['content-type']).not.toMatch(/^text\/html/);
+        expect(asset.body).toBe(reference.endsWith('.css') ? css : js);
+      }
+    },
+  );
+
+  it('strips the one top-level folder so the start page still sits at the root', async () => {
+    const zip = buildZip([
+      { name: 'prototyp/' },
+      { name: 'prototyp/index.html', content: '<h1>Verpackt</h1>' },
+      { name: 'prototyp/assets/' },
+      { name: 'prototyp/assets/app.js', content: 'x' },
+    ]);
+
+    const created = await publishZip('Verpackter Prototyp', 'prototyp.zip', zip);
+    expect(created.statusCode).toBe(201);
+    const { slug } = created.json() as { slug: string };
+
+    const index = await app.inject({ method: 'GET', url: `/${slug}/` });
+    expect(index.statusCode).toBe(200);
+    expect(index.body).toBe('<h1>Verpackt</h1>');
+
+    const stripped = await app.inject({ method: 'GET', url: `/${slug}/assets/app.js` });
+    expect(stripped.statusCode).toBe(200);
+    const notStripped = await app.inject({
+      method: 'GET',
+      url: `/${slug}/prototyp/assets/app.js`,
+    });
+    expect(notStripped.statusCode).toBe(404);
+  });
+
+  it('publishes a zip and a single HTML file in the same run, each serving its own content', async () => {
+    const zip = buildZip([{ name: 'index.html', content: '<h1>Zip</h1>' }]);
+    const zipCreated = await publishZip('Aus dem Zip', 'aus-zip.zip', zip);
+    const htmlCreated = await publish('Aus der Datei', 'aus-datei.html', '<h1>Datei</h1>');
+
+    expect(zipCreated.statusCode).toBe(201);
+    expect(htmlCreated.statusCode).toBe(201);
+    const { slug: zipSlug } = zipCreated.json() as { slug: string };
+    const { slug: htmlSlug } = htmlCreated.json() as { slug: string };
+    expect(zipSlug).not.toBe(htmlSlug);
+
+    const zipDelivered = await app.inject({ method: 'GET', url: `/${zipSlug}/` });
+    const htmlDelivered = await app.inject({ method: 'GET', url: `/${htmlSlug}/` });
+    expect(zipDelivered.body).toBe('<h1>Zip</h1>');
+    expect(htmlDelivered.body).toBe('<h1>Datei</h1>');
+  });
+
+  it('falls back to the filename without its extension for a zip, the same way', async () => {
+    const zip = buildZip([{ name: 'index.html', content: '<h1>ok</h1>' }]);
+    const response = await publishZip(undefined, 'prototyp.zip', zip);
+
+    expect(response.statusCode).toBe(201);
+    expect((response.json() as { displayName: string }).displayName).toBe('prototyp');
   });
 });

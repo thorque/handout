@@ -20,6 +20,15 @@ export function isHtmlFilename(filename: string): boolean {
   return lower.endsWith('.html') || lower.endsWith('.htm');
 }
 
+/**
+ * The extension only, case-insensitively — the same reasoning as {@link isHtmlFilename}:
+ * never the declared content type, never content sniffing. Disjoint with
+ * {@link isHtmlFilename} for every filename — nothing may answer true to both.
+ */
+export function isZipFilename(filename: string): boolean {
+  return filename.toLowerCase().endsWith('.zip');
+}
+
 export type DisplayNameResult = { ok: true; displayName: string } | { ok: false; reason: string };
 
 /**

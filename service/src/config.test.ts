@@ -28,6 +28,9 @@ describe('loadConfig', () => {
     expect(config.signInLabel).toBe('Mit Firmenkonto anmelden');
     expect(config.oidcInternalOrigin).toBeUndefined();
     expect(config.maxUploadBytes).toBe(26_214_400);
+    expect(config.maxUnpackedBytes).toBe(104_857_600);
+    expect(config.maxZipEntries).toBe(2000);
+    expect(config.maxCompressionRatio).toBe(200);
   });
 
   it('rejects a port outside the valid range', () => {
@@ -94,6 +97,9 @@ describe('loadConfig', () => {
       HANDOUT_SIGN_IN_LABEL: 'Mit Testkonto anmelden',
       HANDOUT_OIDC_INTERNAL_ORIGIN: 'http://keycloak:8080',
       HANDOUT_MAX_UPLOAD_BYTES: '1024',
+      HANDOUT_MAX_UNPACKED_BYTES: '2048',
+      HANDOUT_MAX_ZIP_ENTRIES: '10',
+      HANDOUT_MAX_COMPRESSION_RATIO: '5',
     });
 
     expect(config).toEqual({
@@ -112,6 +118,9 @@ describe('loadConfig', () => {
       oidcInternalOrigin: 'http://keycloak:8080',
       sessionKey: config.sessionKey,
       maxUploadBytes: 1024,
+      maxUnpackedBytes: 2048,
+      maxZipEntries: 10,
+      maxCompressionRatio: 5,
     });
   });
 
@@ -217,6 +226,106 @@ describe('loadConfig', () => {
     );
   });
 
+  it('defaults the unpacked-size limit to 100 MB', () => {
+    expect(loadConfig(REQUIRED).maxUnpackedBytes).toBe(104_857_600);
+  });
+
+  it('takes the unpacked-size limit from the environment', () => {
+    expect(loadConfig({ ...REQUIRED, HANDOUT_MAX_UNPACKED_BYTES: '2048' }).maxUnpackedBytes).toBe(
+      2048,
+    );
+  });
+
+  it('rejects an unpacked-size limit of zero', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_UNPACKED_BYTES: '0' })).toThrow(
+      /HANDOUT_MAX_UNPACKED_BYTES/,
+    );
+  });
+
+  it('rejects a negative unpacked-size limit', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_UNPACKED_BYTES: '-1' })).toThrow(
+      /HANDOUT_MAX_UNPACKED_BYTES/,
+    );
+  });
+
+  it('rejects a non-integer unpacked-size limit', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_UNPACKED_BYTES: '1.5' })).toThrow(
+      /HANDOUT_MAX_UNPACKED_BYTES/,
+    );
+  });
+
+  it('rejects an unpacked-size limit carrying a unit', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_UNPACKED_BYTES: '100MB' })).toThrow(
+      /HANDOUT_MAX_UNPACKED_BYTES/,
+    );
+  });
+
+  it('defaults the entry-count limit to 2000', () => {
+    expect(loadConfig(REQUIRED).maxZipEntries).toBe(2000);
+  });
+
+  it('takes the entry-count limit from the environment', () => {
+    expect(loadConfig({ ...REQUIRED, HANDOUT_MAX_ZIP_ENTRIES: '10' }).maxZipEntries).toBe(10);
+  });
+
+  it('rejects an entry-count limit of zero', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_ZIP_ENTRIES: '0' })).toThrow(
+      /HANDOUT_MAX_ZIP_ENTRIES/,
+    );
+  });
+
+  it('rejects a negative entry-count limit', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_ZIP_ENTRIES: '-1' })).toThrow(
+      /HANDOUT_MAX_ZIP_ENTRIES/,
+    );
+  });
+
+  it('rejects a non-integer entry-count limit', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_ZIP_ENTRIES: '1.5' })).toThrow(
+      /HANDOUT_MAX_ZIP_ENTRIES/,
+    );
+  });
+
+  it('rejects an entry-count limit carrying a unit', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_ZIP_ENTRIES: '2000 entries' })).toThrow(
+      /HANDOUT_MAX_ZIP_ENTRIES/,
+    );
+  });
+
+  it('defaults the compression-ratio limit to 200', () => {
+    expect(loadConfig(REQUIRED).maxCompressionRatio).toBe(200);
+  });
+
+  it('takes the compression-ratio limit from the environment', () => {
+    expect(
+      loadConfig({ ...REQUIRED, HANDOUT_MAX_COMPRESSION_RATIO: '5' }).maxCompressionRatio,
+    ).toBe(5);
+  });
+
+  it('rejects a compression-ratio limit of zero', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_COMPRESSION_RATIO: '0' })).toThrow(
+      /HANDOUT_MAX_COMPRESSION_RATIO/,
+    );
+  });
+
+  it('rejects a negative compression-ratio limit', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_COMPRESSION_RATIO: '-1' })).toThrow(
+      /HANDOUT_MAX_COMPRESSION_RATIO/,
+    );
+  });
+
+  it('rejects a non-integer compression-ratio limit', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_COMPRESSION_RATIO: '1.5' })).toThrow(
+      /HANDOUT_MAX_COMPRESSION_RATIO/,
+    );
+  });
+
+  it('rejects a compression-ratio limit carrying a unit', () => {
+    expect(() => loadConfig({ ...REQUIRED, HANDOUT_MAX_COMPRESSION_RATIO: '200x' })).toThrow(
+      /HANDOUT_MAX_COMPRESSION_RATIO/,
+    );
+  });
+
   it('derives a 32-byte session key that differs from the password key', () => {
     const config = loadConfig(REQUIRED);
     expect(config.sessionKey.length).toBe(32);
@@ -244,6 +353,9 @@ describe('loadConfig', () => {
         'oidcInternalOrigin',
         'sessionKey',
         'maxUploadBytes',
+        'maxUnpackedBytes',
+        'maxZipEntries',
+        'maxCompressionRatio',
       ].sort(),
     );
   });

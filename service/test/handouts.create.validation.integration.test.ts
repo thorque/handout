@@ -1,9 +1,10 @@
 /**
  * The create endpoint against a repository that throws if it is reached — no database at
- * all. Criteria 5 and 6, plus every refusal the endpoint's shape decides on its own. See
+ * all. The size and authentication refusals for a single HTML file, every zip refusal, and
+ * every refusal the endpoint's shape decides on its own. See
  * `handouts.create.integration.test.ts` for the happy paths that need a real database.
  */
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { mkdtempSync, readdirSync, rmSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -17,18 +18,31 @@ import { generateSlug } from '../src/slug';
 import { stubHandoutRepository } from './support/handouts';
 import { multipartFormData, multipartRequest } from './support/multipart';
 import { validSessionCookie } from './support/session';
+import { buildZip } from './support/zip';
 
 /** A small limit, so the size cases need kilobytes rather than the real 25 MB default. */
 const MAX_UPLOAD_BYTES = 1024;
 
+/**
+ * The zip fixtures below build entries deliberately far apart from these three, so the
+ * limit that refuses each one is the only one that could — see
+ * `service/src/handouts/zip-entries.ts`'s own tests for the same care. A separate, more
+ * generous upload limit: unlike `MAX_UPLOAD_BYTES` above, nothing here pins its value.
+ */
+const ZIP_MAX_UPLOAD_BYTES = 65_536;
+const ZIP_MAX_UNPACKED_BYTES = 2_000_000;
+const ZIP_MAX_ENTRIES = 5;
+const ZIP_MAX_COMPRESSION_RATIO = 50;
+
 let dataDir: string;
 let config: Config;
+let zipConfig: Config;
 let app: FastifyInstance;
 let cookie: string;
 
 beforeAll(async () => {
   dataDir = mkdtempSync(path.join(os.tmpdir(), 'handout-create-validation-'));
-  config = loadConfig({
+  const required = {
     LOG_LEVEL: 'silent',
     POSTGRES_URL: 'postgresql://user:pass@host:5432/db',
     HANDOUT_PASSWORD_KEY: Buffer.alloc(32, 7).toString('base64'),
@@ -37,7 +51,14 @@ beforeAll(async () => {
     HANDOUT_OIDC_CLIENT_SECRET: 'test-secret',
     HANDOUT_ALLOWED_EMAILS: 'berger-partner.de',
     HANDOUT_DATA_DIR: dataDir,
-    HANDOUT_MAX_UPLOAD_BYTES: String(MAX_UPLOAD_BYTES),
+  };
+  config = loadConfig({ ...required, HANDOUT_MAX_UPLOAD_BYTES: String(MAX_UPLOAD_BYTES) });
+  zipConfig = loadConfig({
+    ...required,
+    HANDOUT_MAX_UPLOAD_BYTES: String(ZIP_MAX_UPLOAD_BYTES),
+    HANDOUT_MAX_UNPACKED_BYTES: String(ZIP_MAX_UNPACKED_BYTES),
+    HANDOUT_MAX_ZIP_ENTRIES: String(ZIP_MAX_ENTRIES),
+    HANDOUT_MAX_COMPRESSION_RATIO: String(ZIP_MAX_COMPRESSION_RATIO),
   });
   cookie = await validSessionCookie(config);
 });
@@ -104,6 +125,46 @@ function upload(
     payload: form.payload,
     cookies: withCookie ? { handout_session: cookie } : {},
   });
+}
+
+function buildZipAppWith(createHandout = stubHandoutRepository().createHandout): {
+  app: FastifyInstance;
+  createHandout: typeof createHandout;
+} {
+  const spy = vi.fn<(input: CreateHandoutInput) => Promise<Handout>>(createHandout);
+  const built = buildApp(zipConfig, {
+    checkDatabase: () => Promise.resolve(true),
+    handouts: stubHandoutRepository({
+      createHandout: spy,
+      deleteHandout: vi.fn<(id: string) => Promise<boolean>>(),
+    }),
+  });
+  return { app: built, createHandout: spy };
+}
+
+function uploadZip(displayName: string | undefined, filename: string, content: Buffer) {
+  const form = multipartFormData(displayName === undefined ? {} : { displayName }, {
+    fieldname: 'file',
+    filename,
+    contentType: 'application/zip',
+    content,
+  });
+  return app.inject({
+    method: 'POST',
+    url: '/api/handouts',
+    headers: form.headers,
+    payload: form.payload,
+    cookies: { handout_session: cookie },
+  });
+}
+
+/**
+ * Criteria 3 and 6 taken literally: not just a clean `staging/`, but nothing at all under
+ * `dataDir` outside the two subdirectories the write path is documented to create.
+ */
+function expectNothingWrittenOutsideTheLayout(): void {
+  expect(readdirSync(dataDir).sort()).toEqual(['handouts', 'staging']);
+  expect(readdirSync(stagingDir(zipConfig))).toEqual([]);
 }
 
 describe('POST /api/handouts, over the size limit — criterion 5', () => {
@@ -378,5 +439,218 @@ describe('POST /api/handouts, part order and shape the endpoint cannot dictate',
     expect(response.statusCode).toBe(400);
     expect(built.createHandout).not.toHaveBeenCalled();
     expectCleanStaging();
+  });
+});
+
+describe('POST /api/handouts, the zip branch', () => {
+  it('refuses an entry that escapes the target directory, naming it, writing nothing outside it — criterion 3', async () => {
+    const built = buildZipAppWith();
+    app = built.app;
+    const zip = buildZip([
+      { name: 'index.html', content: '<h1>harmlos</h1>' },
+      { name: '../escape.html', content: '<h1>ausgebrochen</h1>' },
+    ]);
+
+    const response = await uploadZip('Ausbruch', 'ausbruch.zip', zip);
+
+    // Pins the message a sender actually sees over HTTP, not just the status: with
+    // decodeStrings left at yauzl's default, this exact request answered 400 "the zip
+    // could not be read" instead — a message a publisher cannot act on. yauzl's own name
+    // check ran first and refused before checkEntry ever named the entry.
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      message: 'the zip contains an entry that escapes the target directory: "../escape.html"',
+    });
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectNothingWrittenOutsideTheLayout();
+  });
+
+  it('refuses an absolute entry path, naming it', async () => {
+    const built = buildZipAppWith();
+    app = built.app;
+    const zip = buildZip([
+      { name: 'index.html', content: '<h1>harmlos</h1>' },
+      { name: '/etc/passwd', content: 'root:x:0:0' },
+    ]);
+
+    const response = await uploadZip('Absolut', 'absolut.zip', zip);
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      message: 'the zip contains an entry with an absolute path: "/etc/passwd"',
+    });
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectNothingWrittenOutsideTheLayout();
+  });
+
+  it('refuses a symlink entry', async () => {
+    const built = buildZipAppWith();
+    app = built.app;
+    const zip = buildZip([
+      { name: 'index.html', content: '<h1>harmlos</h1>' },
+      { name: 'geheim.html', content: '../../etc/passwd', unixMode: 0o120777 },
+    ]);
+
+    const response = await uploadZip('Verknüpfung', 'verknuepfung.zip', zip);
+
+    expect(response.statusCode).toBe(400);
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectNothingWrittenOutsideTheLayout();
+  });
+
+  it('refuses an encrypted entry', async () => {
+    const built = buildZipAppWith();
+    app = built.app;
+    const zip = buildZip([
+      { name: 'index.html', content: '<h1>harmlos</h1>' },
+      { name: 'secret.bin', content: 'top secret', encrypted: true },
+    ]);
+
+    const response = await uploadZip('Verschlüsselt', 'verschluesselt.zip', zip);
+
+    expect(response.statusCode).toBe(400);
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectNothingWrittenOutsideTheLayout();
+  });
+
+  it('refuses over the entry count — criterion 4', async () => {
+    const built = buildZipAppWith();
+    app = built.app;
+    const entries = [{ name: 'index.html', content: '<h1>viele</h1>' }];
+    for (let i = 0; i < 10; i += 1) entries.push({ name: `f${i}.txt`, content: 'x' });
+    const zip = buildZip(entries);
+
+    const response = await uploadZip('Viele', 'viele.zip', zip);
+
+    expect(response.statusCode).toBe(413);
+    const body = response.json() as { message: string };
+    expect(body.message).toContain(String(ZIP_MAX_ENTRIES));
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectNothingWrittenOutsideTheLayout();
+  });
+
+  it('refuses over the unpacked size, before the limit is crossed — criterion 4', async () => {
+    const built = buildZipAppWith();
+    app = built.app;
+    const zip = buildZip([
+      { name: 'index.html', content: '<h1>ok</h1>' },
+      {
+        name: 'gross.bin',
+        content: 'a'.repeat(ZIP_MAX_UNPACKED_BYTES + 1000),
+        deflate: true,
+      },
+    ]);
+
+    const response = await uploadZip('Bombe', 'bombe.zip', zip);
+
+    expect(response.statusCode).toBe(413);
+    const body = response.json() as { message: string };
+    expect(body.message).toContain(String(ZIP_MAX_UNPACKED_BYTES));
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectNothingWrittenOutsideTheLayout();
+  });
+
+  it('refuses over the compression ratio — under every other limit', async () => {
+    const built = buildZipAppWith();
+    app = built.app;
+    const zip = buildZip([
+      { name: 'index.html', content: '<h1>ok</h1>' },
+      { name: 'gross.bin', content: Buffer.alloc(1_200_000, 97), deflate: true },
+    ]);
+
+    const response = await uploadZip('Verhältnis', 'verhaeltnis.zip', zip);
+
+    expect(response.statusCode).toBe(413);
+    const body = response.json() as { message: string };
+    expect(body.message).toContain(String(ZIP_MAX_COMPRESSION_RATIO));
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectNothingWrittenOutsideTheLayout();
+  });
+
+  it('refuses several folders with no index.html anywhere, naming both places searched — criterion 5', async () => {
+    const built = buildZipAppWith();
+    app = built.app;
+    const zip = buildZip([
+      { name: 'a/start.html', content: '<h1>start</h1>' },
+      { name: 'b/mehr.html', content: '<h1>mehr</h1>' },
+    ]);
+
+    const response = await uploadZip('Ohne Index', 'ohne-index.zip', zip);
+
+    expect(response.statusCode).toBe(400);
+    const body = response.json() as { message: string };
+    expect(body.message).toContain('root');
+    expect(body.message).toContain('top-level folder');
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectNothingWrittenOutsideTheLayout();
+  });
+
+  it('refuses a single top folder whose index.html sits one level deeper', async () => {
+    const built = buildZipAppWith();
+    app = built.app;
+    const zip = buildZip([{ name: 'site/unter/index.html', content: '<h1>zu tief</h1>' }]);
+
+    const response = await uploadZip('Zu tief', 'zu-tief.zip', zip);
+
+    expect(response.statusCode).toBe(400);
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectNothingWrittenOutsideTheLayout();
+  });
+
+  it('refuses an index.htm with no index.html, naming the reason a publisher needs — criterion 5', async () => {
+    const built = buildZipAppWith();
+    app = built.app;
+    const zip = buildZip([
+      { name: 'index.htm', content: '<h1>falsche Endung</h1>' },
+      { name: 'assets/app.js', content: 'x' },
+    ]);
+
+    const response = await uploadZip('Falsche Endung', 'index-htm.zip', zip);
+
+    expect(response.statusCode).toBe(400);
+    const body = response.json() as { message: string };
+    expect(body.message).toContain('index.htm');
+    expect(body.message).toContain('index.html');
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectNothingWrittenOutsideTheLayout();
+  });
+
+  it('refuses a .zip that is not actually a zip, answering 400 rather than 500', async () => {
+    const built = buildZipAppWith();
+    app = built.app;
+
+    const response = await uploadZip('Kaputt', 'kaputt.zip', Buffer.from('not a zip'));
+
+    expect(response.statusCode).toBe(400);
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectNothingWrittenOutsideTheLayout();
+  });
+
+  it('reaches createHandout for a well-formed zip — the branch is wired up', async () => {
+    const built = buildZipAppWith(async (input) => fixedHandout(input.displayName));
+    app = built.app;
+    const zip = buildZip([{ name: 'index.html', content: '<h1>ok</h1>' }]);
+
+    const response = await uploadZip('Es geht', 'es-geht.zip', zip);
+
+    expect(response.statusCode).toBe(201);
+    expect(built.createHandout).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses a zip over the upload limit, before any unpacking — criterion 4 at the outer boundary', async () => {
+    const built = buildZipAppWith();
+    app = built.app;
+    // Random bytes deliberately do not compress — this has to trip the plain multipart
+    // fileSize limit, not any unpacking rule.
+    const zip = buildZip([
+      { name: 'index.html', content: '<h1>ok</h1>' },
+      { name: 'big.bin', content: randomBytes(ZIP_MAX_UPLOAD_BYTES + 4096) },
+    ]);
+
+    const response = await uploadZip('Zu groß', 'zu-gross.zip', zip);
+
+    expect(response.statusCode).toBe(413);
+    expect(built.createHandout).not.toHaveBeenCalled();
+    expectNothingWrittenOutsideTheLayout();
   });
 });

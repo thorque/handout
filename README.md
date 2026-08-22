@@ -31,24 +31,30 @@ with `"status": "degraded"` when the schema is not there.
 
 Everything is read from the environment; `.env` is loaded for local development.
 
-| Variable                       | Meaning                                                                                                  |
-| ------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `PORT`, `HOST`                 | where the service listens; defaults `3000` and `0.0.0.0`                                                 |
-| `LOG_LEVEL`                    | Fastify's log level, default `info`                                                                      |
-| `HANDOUT_DATA_DIR`             | where content lives: `<HANDOUT_DATA_DIR>/handouts/<slug>/`, absolute (default `<repo>/var/data`)         |
-| `DATABASE_URL`                 | the database; falls back to `POSTGRES_URL`, which the workbench provides                                 |
-| `HANDOUT_DATABASE_SCHEMA`      | the schema migrations and queries work in, default `public`                                              |
-| `HANDOUT_PASSWORD_KEY`         | **required**, 32 bytes base64 — encrypts handout passwords                                               |
-| `HANDOUT_OIDC_ISSUER_URL`      | **required** — the identity provider's issuer URL                                                        |
-| `HANDOUT_OIDC_CLIENT_ID`       | **required** — this instance's client id at the provider                                                 |
-| `HANDOUT_OIDC_CLIENT_SECRET`   | **required** — this instance's client secret at the provider                                             |
-| `HANDOUT_ALLOWED_EMAILS`       | **required** — who may publish, domains and addresses; see [`docs/sign-in.md`](docs/sign-in.md)          |
-| `HANDOUT_SIGN_IN_LABEL`        | the sign-in button's caption, default `Mit Firmenkonto anmelden`                                         |
-| `HANDOUT_OIDC_INTERNAL_ORIGIN` | where the service reaches the provider, when that differs from the browser; falls back to `KEYCLOAK_URL` |
-| `HANDOUT_MAX_UPLOAD_BYTES`     | the largest file `POST /api/handouts` accepts, in bytes, default `26214400` (25 MB)                      |
+| Variable                        | Meaning                                                                                                  |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `PORT`, `HOST`                  | where the service listens; defaults `3000` and `0.0.0.0`                                                 |
+| `LOG_LEVEL`                     | Fastify's log level, default `info`                                                                      |
+| `HANDOUT_DATA_DIR`              | where content lives: `<HANDOUT_DATA_DIR>/handouts/<slug>/`, absolute (default `<repo>/var/data`)         |
+| `DATABASE_URL`                  | the database; falls back to `POSTGRES_URL`, which the workbench provides                                 |
+| `HANDOUT_DATABASE_SCHEMA`       | the schema migrations and queries work in, default `public`                                              |
+| `HANDOUT_PASSWORD_KEY`          | **required**, 32 bytes base64 — encrypts handout passwords                                               |
+| `HANDOUT_OIDC_ISSUER_URL`       | **required** — the identity provider's issuer URL                                                        |
+| `HANDOUT_OIDC_CLIENT_ID`        | **required** — this instance's client id at the provider                                                 |
+| `HANDOUT_OIDC_CLIENT_SECRET`    | **required** — this instance's client secret at the provider                                             |
+| `HANDOUT_ALLOWED_EMAILS`        | **required** — who may publish, domains and addresses; see [`docs/sign-in.md`](docs/sign-in.md)          |
+| `HANDOUT_SIGN_IN_LABEL`         | the sign-in button's caption, default `Mit Firmenkonto anmelden`                                         |
+| `HANDOUT_OIDC_INTERNAL_ORIGIN`  | where the service reaches the provider, when that differs from the browser; falls back to `KEYCLOAK_URL` |
+| `HANDOUT_MAX_UPLOAD_BYTES`      | the largest file `POST /api/handouts` accepts, in bytes, default `26214400` (25 MB)                      |
+| `HANDOUT_MAX_UNPACKED_BYTES`    | the largest a zip may unpack to, in bytes, default `104857600` (100 MB)                                  |
+| `HANDOUT_MAX_ZIP_ENTRIES`       | the largest number of files a zip may contain, default `2000`                                            |
+| `HANDOUT_MAX_COMPRESSION_RATIO` | the largest ratio of unpacked to packed size a single zip entry may have, default `200`                  |
 
-25 MB is generous enough for a Claude artifact with embedded images, and the same limit
-will serve the zip upload of a later story.
+25 MB is generous enough for a Claude artifact with embedded images. A zip is capped by
+that same limit as it is posted, and its unpacked tree is capped separately by
+`HANDOUT_MAX_UNPACKED_BYTES` — a small archive can still unpack to something much larger.
+See [`docs/data-directory.md`](docs/data-directory.md) for what each of the three zip
+limits catches that the others do not, and for the rest of the unpacking rules.
 
 `HANDOUT_PASSWORD_KEY` has no default and no fallback: handout passwords have to stay
 readable for their owner, so they are encrypted rather than hashed, and losing the key
