@@ -443,7 +443,7 @@ describe('POST /api/handouts, part order and shape the endpoint cannot dictate',
 });
 
 describe('POST /api/handouts, the zip branch', () => {
-  it('refuses an entry that escapes the target directory, writing nothing outside it — criterion 3', async () => {
+  it('refuses an entry that escapes the target directory, naming it, writing nothing outside it — criterion 3', async () => {
     const built = buildZipAppWith();
     app = built.app;
     const zip = buildZip([
@@ -453,12 +453,19 @@ describe('POST /api/handouts, the zip branch', () => {
 
     const response = await uploadZip('Ausbruch', 'ausbruch.zip', zip);
 
+    // Pins the message a sender actually sees over HTTP, not just the status: with
+    // decodeStrings left at yauzl's default, this exact request answered 400 "the zip
+    // could not be read" instead — a message a publisher cannot act on. yauzl's own name
+    // check ran first and refused before checkEntry ever named the entry.
     expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      message: 'the zip contains an entry that escapes the target directory: "../escape.html"',
+    });
     expect(built.createHandout).not.toHaveBeenCalled();
     expectNothingWrittenOutsideTheLayout();
   });
 
-  it('refuses an absolute entry path', async () => {
+  it('refuses an absolute entry path, naming it', async () => {
     const built = buildZipAppWith();
     app = built.app;
     const zip = buildZip([
@@ -469,6 +476,9 @@ describe('POST /api/handouts, the zip branch', () => {
     const response = await uploadZip('Absolut', 'absolut.zip', zip);
 
     expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({
+      message: 'the zip contains an entry with an absolute path: "/etc/passwd"',
+    });
     expect(built.createHandout).not.toHaveBeenCalled();
     expectNothingWrittenOutsideTheLayout();
   });

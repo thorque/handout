@@ -68,7 +68,7 @@ describe('unpackZip', () => {
     );
   });
 
-  it('refuses an escaping entry and writes nothing outside the target directory', async () => {
+  it('refuses an escaping entry with the precise message, and writes nothing outside the target directory', async () => {
     const { zipPath, targetDir, root } = setUp([
       { name: 'index.html', content: '<h1>harmlos</h1>' },
       { name: '../escape.html', content: '<h1>ausgebrochen</h1>' },
@@ -76,16 +76,19 @@ describe('unpackZip', () => {
 
     const result = await unpackZip({ zipPath, targetDir, limits: LIMITS });
 
-    // yauzl's own validateFileName already refuses a ".." entry before planZipEntries
-    // ever sees it (see docs/data-directory.md) — either layer answering "invalid" is
-    // the contract; which one fired is not.
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected a refusal');
-    expect(result.kind).toBe('invalid');
+    // decodeStrings: false at the openPromise call is what makes this reachable at all:
+    // with it on, yauzl's own validateFileName refuses ".." before checkEntry ever sees
+    // the name, and the publisher gets a flat "the zip could not be read" instead of
+    // this. A publisher who cannot tell which entry is at fault cannot fix the archive.
+    expect(result).toEqual({
+      ok: false,
+      kind: 'invalid',
+      message: 'the zip contains an entry that escapes the target directory: "../escape.html"',
+    });
     expect(existsSync(path.join(root, 'escape.html'))).toBe(false);
   });
 
-  it('refuses an absolute entry path', async () => {
+  it('refuses an absolute entry path with the precise message', async () => {
     const { zipPath, targetDir } = setUp([
       { name: 'index.html', content: '<h1>harmlos</h1>' },
       { name: '/etc/passwd', content: 'root:x:0:0' },
@@ -93,9 +96,31 @@ describe('unpackZip', () => {
 
     const result = await unpackZip({ zipPath, targetDir, limits: LIMITS });
 
-    expect(result.ok).toBe(false);
-    if (result.ok) throw new Error('expected a refusal');
-    expect(result.kind).toBe('invalid');
+    expect(result).toEqual({
+      ok: false,
+      kind: 'invalid',
+      message: 'the zip contains an entry with an absolute path: "/etc/passwd"',
+    });
+  });
+
+  it('normalizes a Windows-shaped backslash path the same way yauzl itself would, and still refuses it as an escape', async () => {
+    // Verifies the caveat that comes with turning yauzl's own name validation off:
+    // getFileNameLowLevel (called ourselves now, in toEntryInfo) still replaces "\"
+    // with "/" before checkEntry ever sees the name, exactly as yauzl would have done
+    // internally — so this is caught by normalizeEntryPath's own ".." rule, not stored
+    // as a filename that merely contains a backslash.
+    const { zipPath, targetDir } = setUp([
+      { name: 'index.html', content: '<h1>harmlos</h1>' },
+      { name: '..\\..\\escaped.html', content: 'x' },
+    ]);
+
+    const result = await unpackZip({ zipPath, targetDir, limits: LIMITS });
+
+    expect(result).toEqual({
+      ok: false,
+      kind: 'invalid',
+      message: 'the zip contains an entry that escapes the target directory: "../../escaped.html"',
+    });
   });
 
   it('refuses a symlink entry and creates no symlink under the target directory', async () => {

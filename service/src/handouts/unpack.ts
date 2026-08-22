@@ -8,7 +8,7 @@ import { createWriteStream, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { PassThrough, type Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
-import { openPromise, type Entry, type ZipFile } from 'yauzl';
+import { getFileNameLowLevel, openPromise, type Entry, type ZipFile } from 'yauzl';
 import {
   isCountedFileEntry,
   planZipEntries,
@@ -36,6 +36,14 @@ export type UnpackResult =
  */
 const RAW_ENTRY_ABORT_MULTIPLIER = 20;
 
+/**
+ * Left at yauzl's own default (`false`): it turns a Windows-shaped `..\..\x` into
+ * `../../x` before any name is looked at, which is what lets normalizeEntryPath's own
+ * `..` rule catch it, instead of storing a filename that merely contains a backslash.
+ * Named and shared with `toEntryInfo` below so the two can never drift apart on this.
+ */
+const STRICT_FILE_NAMES = false;
+
 function invalid(message: string, cause?: unknown): UnpackResult {
   return cause === undefined
     ? { ok: false, kind: 'invalid', message }
@@ -61,12 +69,24 @@ function isSystemError(error: unknown): error is NodeJS.ErrnoException {
   );
 }
 
+/**
+ * `decodeStrings: false` below means yauzl never calls its own name decoder on this
+ * entry, so this reproduces exactly what it would have done itself — same function, same
+ * `STRICT_FILE_NAMES` — minus the `validateFileName` call bundled into that path. See the
+ * long comment at the `openPromise` call for why that call has to be skipped.
+ */
 function toEntryInfo(entry: Entry): ZipEntryInfo {
+  const name = getFileNameLowLevel(
+    entry.generalPurposeBitFlag,
+    entry.fileNameRaw,
+    entry.extraFields,
+    STRICT_FILE_NAMES,
+  );
   return {
-    name: entry.fileName,
+    name,
     uncompressedSize: entry.uncompressedSize,
     compressedSize: entry.compressedSize,
-    isDirectory: entry.fileName.endsWith('/'),
+    isDirectory: name.endsWith('/'),
     unixMode: (entry.externalFileAttributes >>> 16) & 0xffff,
     isEncrypted: entry.isEncrypted(),
     canDecodeFileData: entry.canDecodeFileData(),
@@ -94,11 +114,26 @@ export async function unpackZip(request: UnpackRequest): Promise<UnpackResult> {
       // autoClose: false is what lets pass 2 open read streams after eachEntry() has
       // ended; openPromise forces lazyEntries: true on its own. validateEntrySizes stays
       // on, which is what stage 2 in docs/data-directory.md relies on for an
-      // under-declared entry. decodeStrings on, so entry.fileName is already a string.
+      // under-declared entry.
+      //
+      // decodeStrings: false, deliberately not the default. With it on, yauzl decodes
+      // entry.fileName itself and immediately runs its own validateFileName on it,
+      // raising a plain Error before checkEntry (./zip-entries.ts) ever sees the name —
+      // so an escaping ("..") or absolute path answered a flat "the zip could not be
+      // read" over HTTP instead of the precise, entry-naming refusal checkEntry already
+      // writes. checkEntry became unreachable for exactly the paths it exists to name.
+      // Turning decodeStrings off skips that call entirely; toEntryInfo decodes the name
+      // itself with yauzl's own getFileNameLowLevel (the same function yauzl would have
+      // called), so every entry — malformed or not — reaches checkEntry, and only it
+      // decides. Rejected alternative: pattern-matching yauzl's own error text back into
+      // our message — cheaper, but tied to a dependency's wording that can change under
+      // us on any update, for the exact kind of two-places-disagree bug this story has
+      // already paid for twice.
       zipfile = await openPromise(zipPath, {
         autoClose: false,
         validateEntrySizes: true,
-        decodeStrings: true,
+        decodeStrings: false,
+        strictFileNames: STRICT_FILE_NAMES,
       });
     } catch (error) {
       return invalid('the file could not be read as a zip archive', error);
